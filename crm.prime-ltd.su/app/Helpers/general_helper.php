@@ -68,6 +68,12 @@ if (!function_exists('get_file_uri')) {
 
     function get_file_uri($uri = "")
     {
+        $filesBase = env('files.baseURL');
+        $normalized = ltrim((string) $uri, '/');
+        if ($filesBase && str_starts_with($normalized, 'files/')) {
+            return rtrim((string) $filesBase, '/') . '/' . $normalized;
+        }
+
         return base_url($uri);
     }
 }
@@ -93,7 +99,7 @@ if (!function_exists('get_avatar')) {
             if (is_array($file)) {
                 return get_source_url_of_file($file, get_setting("profile_image_path") . "/", "thumbnail");
             } else {
-                return base_url(get_setting("profile_image_path")) . "/" . $image;
+                return get_file_uri(rtrim(get_setting("profile_image_path"), '/') . '/' . ltrim($image, '/'));
             }
         } else {
             return base_url("assets/images/avatar.jpg");

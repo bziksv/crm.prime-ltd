@@ -12,7 +12,9 @@
 crm.prime-ltd.su/app/Config/Database.php
 
 # Runtime / uploads (heavy; keep on server only)
-crm.prime-ltd.su/files/
+crm.prime-ltd.su/files/**
+!crm.prime-ltd.su/files/README.md
+!crm.prime-ltd.su/files/**/index.html
 crm.prime-ltd.su/writable/cache/
 crm.prime-ltd.su/writable/logs/
 crm.prime-ltd.su/writable/session/
@@ -24,8 +26,6 @@ crm.prime-ltd.su/mylog.txt
 # Keep empty writable dirs in git via placeholders
 !crm.prime-ltd.su/writable/**/.gitkeep
 !crm.prime-ltd.su/writable/**/index.html
-!crm.prime-ltd.su/files/index.html
-!crm.prime-ltd.su/files/**/index.html
 
 # Local DB dumps and old archives (do not push customer data)
 db/
@@ -34,6 +34,7 @@ db/
 *.sql.zip
 crm.prime-ltd.su.old-*/
 *.old-*
+.compare/
 
 # Nested git metadata if any
 crm.prime-ltd.su/.git/

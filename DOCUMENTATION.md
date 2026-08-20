@@ -87,12 +87,73 @@ SSH: `Host vilmed` → `217.28.220.186`, ключ `~/.ssh/id_ed25519`.
 
 ## Локальный запуск
 
-1. Скопировать код в vhost / OpenServer / Docker с PHP ≥ 8.1.
-2. `cp crm.prime-ltd.su/app/Config/Database.php.example crm.prime-ltd.su/app/Config/Database.php` и прописать доступ к БД.
-3. Импортировать дамп из `db/`.
-4. Создать пустые каталоги `files/`, `writable/{cache,logs,session,uploads}` с правами на запись.
-5. В `.env` при необходимости: `CI_ENVIRONMENT = development`.
-6. Открыть сайт в браузере (document root = `crm.prime-ltd.su`).
+### Подготовка (один раз)
+
+1. PHP ≥ 8.1, локальный MySQL **или** SSH-туннель к боевой БД (см. ниже).
+2. `cp crm.prime-ltd.su/app/Config/Database.php.example crm.prime-ltd.su/app/Config/Database.php` — прописать доступ к БД.
+3. В `.env` (локально):
+
+```
+CI_ENVIRONMENT = development
+files.baseURL = 'https://crm.prime-ltd.su/'
+```
+
+4. Каталоги `writable/{cache,logs,session,uploads}` и заглушки `files/` — с правами на запись.
+
+### Вариант A: удалённая БД напрямую
+
+На сервере у `crm_prime_lt` есть хост `%` — с Mac можно ходить на `217.28.220.186:3306`.
+
+**Минус:** высокий round-trip (~20–30 мс на запрос + ~200–300 мс на коннект). Страница логина легко уходит в **десятки секунд**; встроенный PHP-сервер однопоточный и из‑за этого «встаёт» целиком. Для повседневной локальной работы лучше **вариант B**.
+
+В `app/Config/Database.php` (не в git):
+
+```php
+'hostname' => '217.28.220.186',
+'port'     => 3306,
+```
+
+Запасной туннель, если `%` закроют: `ssh -N -L 3308:127.0.0.1:3306 vilmed` → `127.0.0.1:3308`.
+
+### Вариант B: локальная копия БД (быстро, рекомендуется для dev)
+
+```bash
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS crm_prime_lt CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+gunzip -c db/crm_prime_lt-YYYYMMDD.sql.gz | mysql -u root crm_prime_lt
+```
+
+В `Database.php`: `hostname` = `localhost`, `port` = `3306`. Ожидаемый TTFB логина ~0.2–0.5 с.
+
+### PHP built-in server (экономный режим по RAM)
+
+Документ root = `crm.prime-ltd.su`. Роутер: `crm.prime-ltd.su/router.php` (для ЧПУ на встроенном сервере PHP).
+
+```bash
+cd crm.prime-ltd.su
+
+# остановить предыдущий инстанс на порту
+pkill -f "php -S 127.0.0.1:8099" 2>/dev/null || true
+
+# низкий memory_limit, без opcache — меньше RSS на Mac
+php \
+  -d memory_limit=96M \
+  -d opcache.enable=0 \
+  -d opcache.enable_cli=0 \
+  -d realpath_cache_size=16K \
+  -d realpath_cache_ttl=60 \
+  -S 127.0.0.1:8099 router.php
+```
+
+| | |
+|--|--|
+| URL | http://127.0.0.1:8099/ → `/index.php/signin` |
+| Ожидаемый RSS | ~25–40 МБ (один процесс PHP) |
+| Порт | `8099` (если занят — сменить в команде) |
+| БД | `217.28.220.186:3306` (удалённая) |
+
+Остановка PHP: `pkill -f "php -S 127.0.0.1:8099"`.
+
+Альтернатива: vhost / OpenServer / Docker с document root на `crm.prime-ltd.su` — те же `.env` и БД.
 
 ---
 
@@ -110,6 +171,21 @@ ssh vilmed 'cd /var/www/crm_prime_lt_usr/data/www/crm.prime-ltd.su && git pull'
 После SQL из `plugins/Migration/install/migrations/` — применять вручную или через плагин Migration.
 
 ---
+
+
+## Локальные files/ (лёгкая копия)
+
+Локальный каталог `crm.prime-ltd.su/files/` **пустой** (~заглушки). Полные загрузки (~12 ГБ, в основном `timeline_files`) только на сервере.
+
+В `.env` (не в git):
+
+```
+files.baseURL = 'https://crm.prime-ltd.su/'
+```
+
+Тогда URL вложений и превью строятся на прод (`get_file_uri()`). На боевом сервере эту переменную **не** задавать.
+
+Вложенный `.git` внутри `crm.prime-ltd.su/` удалён — репозиторий только в корне проекта.
 
 ## Что не коммитим
 
