@@ -1,0 +1,39 @@
+# macOS / IDE
+.DS_Store
+.idea/
+.vscode/
+.osp/
+*.swp
+*~
+
+# Local env and secrets
+.env
+**/.env
+crm.prime-ltd.su/app/Config/Database.php
+
+# Runtime / uploads (heavy; keep on server only)
+crm.prime-ltd.su/files/
+crm.prime-ltd.su/writable/cache/
+crm.prime-ltd.su/writable/logs/
+crm.prime-ltd.su/writable/session/
+crm.prime-ltd.su/writable/uploads/
+crm.prime-ltd.su/writable/debugbar/
+crm.prime-ltd.su/updates/
+crm.prime-ltd.su/mylog.txt
+
+# Keep empty writable dirs in git via placeholders
+!crm.prime-ltd.su/writable/**/.gitkeep
+!crm.prime-ltd.su/writable/**/index.html
+!crm.prime-ltd.su/files/index.html
+!crm.prime-ltd.su/files/**/index.html
+
+# Local DB dumps and old archives (do not push customer data)
+db/
+*.sql
+*.sql.gz
+*.sql.zip
+crm.prime-ltd.su.old-*/
+*.old-*
+
+# Nested git metadata if any
+crm.prime-ltd.su/.git/

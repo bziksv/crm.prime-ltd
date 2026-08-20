@@ -1,0 +1,13 @@
+.env
+.osp
+.idea
+.log
+app/Config/Database.php
+files/
+writable/cache/
+writable/logs/
+writable/session/
+writable/uploads/
+writable/debugbar/
+updates/
+mylog.txt

@@ -1,0 +1,44 @@
+/*Write your custom css in this file.*/
+
+.comment-image-box {
+    width: 100%;
+    flex-direction: column;
+    align-items: start !important;
+}
+
+.timeline-images .file-mockup {
+    width: 40px;
+    height: 40px;
+    font-size: 30px;
+    display: block;
+}
+
+.timeline-images .file-mockup .mt-12 {
+    margin-top: 0rem !important;
+    max-width: 30px;
+    max-height: 30px;
+    vertical-align: unset;
+}
+
+.comment-highlight {
+    border: 2px solid #5766D9!important;
+}
+
+.checklist-items a.edit-checklist-item,
+.checklist-items a.copy-checklist-item {
+    color: #a1a3a5;
+}
+
+.filter-multi-select .dropdown-menu {
+    overflow: hidden;
+    overflow-y: auto;
+    max-height: 300px;
+}
+
+.app-popover {
+    z-index: 1080;
+}
+
+.d-none {
+    display: none !important;
+}
