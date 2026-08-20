@@ -6,10 +6,10 @@
 
 | Параметр | Значение |
 |----------|----------|
-| Боевой URL | https://crm.prime-ltd.su |
+| Боевой URL | https://. |
 | GitHub | https://github.com/bziksv/crm.prime-ltd |
 | Сервер | `217.28.220.186` (SSH alias `vilmed`) |
-| Document root | `/var/www/crm_prime_lt_usr/data/www/crm.prime-ltd.su` |
+| Document root | `/var/www/crm_prime_lt_usr/data/www/.` |
 | PHP | ≥ 8.1 |
 | БД | MySQL 8, схема `crm_prime_lt`, префикс таблиц `rise_` |
 | Фреймворк | CodeIgniter 4 / RISE CRM |
@@ -18,26 +18,27 @@
 
 ## Структура репозитория
 
+Корень git = document root сайта (как на сервере `/var/www/.../crm.prime-ltd.su`).
+
 ```
-crm.prime-ltd/
+crm.prime-ltd/                 # = корень сайта
 ├── DOCUMENTATION.md
 ├── .gitignore
 ├── .cursorignore
-├── db/                          # локальные дампы БД (не в git)
-│   └── crm_prime_lt-YYYYMMDD.sql.gz
-└── crm.prime-ltd.su/            # корень сайта (= document root на сервере)
-    ├── index.php
-    ├── .env                     # локально / на сервере (не в git)
-    ├── app/                     # Controllers, Models, Views, Config, Helpers…
-    ├── assets/                  # CSS/JS/картинки фронта
-    ├── plugins/                 # кастомные плагины
-    ├── system/                  # ядро CI4 / RISE
-    ├── files/                   # пользовательские загрузки (не в git, ~13 ГБ на проде)
-    ├── writable/                # cache/logs/session (не в git)
-    └── app/Config/Database.php.example
+├── .env / .env.example
+├── index.php
+├── router.php                 # для php -S
+├── app/
+├── assets/
+├── plugins/
+├── system/
+├── files/                     # на проде ~13 ГБ; в git только README/заглушки
+├── writable/
+└── db/                        # локальные дампы (не в git)
 ```
 
-На проде каталог `files/timeline_files` занимает основную часть диска (~13 ГБ). В репозиторий не входит.
+На проде `files/timeline_files` занимает основную часть диска (~13 ГБ). В репозиторий не входит.
+
 
 ---
 
@@ -90,12 +91,12 @@ SSH: `Host vilmed` → `217.28.220.186`, ключ `~/.ssh/id_ed25519`.
 ### Подготовка (один раз)
 
 1. PHP ≥ 8.1, локальный MySQL **или** SSH-туннель к боевой БД (см. ниже).
-2. `cp crm.prime-ltd.su/app/Config/Database.php.example crm.prime-ltd.su/app/Config/Database.php` — прописать доступ к БД.
+2. `cp app/Config/Database.php.example app/Config/Database.php` — прописать доступ к БД.
 3. В `.env` (локально):
 
 ```
 CI_ENVIRONMENT = development
-files.baseURL = 'https://crm.prime-ltd.su/'
+files.baseURL = 'https://'
 ```
 
 4. Каталоги `writable/{cache,logs,session,uploads}` и заглушки `files/` — с правами на запись.
@@ -126,10 +127,10 @@ gunzip -c db/crm_prime_lt-YYYYMMDD.sql.gz | mysql -u root crm_prime_lt
 
 ### PHP built-in server (экономный режим по RAM)
 
-Документ root = `crm.prime-ltd.su`. Роутер: `crm.prime-ltd.su/router.php` (для ЧПУ на встроенном сервере PHP).
+Документ root = `.`. Роутер: `router.php` (для ЧПУ на встроенном сервере PHP).
 
 ```bash
-cd crm.prime-ltd.su
+cd /path/to/crm.prime-ltd
 
 # остановить предыдущий инстанс на порту
 pkill -f "php -S 127.0.0.1:8099" 2>/dev/null || true
@@ -153,7 +154,7 @@ php \
 
 Остановка PHP: `pkill -f "php -S 127.0.0.1:8099"`.
 
-Альтернатива: vhost / OpenServer / Docker с document root на `crm.prime-ltd.su` — те же `.env` и БД.
+Альтернатива: vhost / OpenServer / Docker с document root на `.` — те же `.env` и БД.
 
 ---
 
@@ -163,7 +164,7 @@ php \
 
 ```bash
 # пример: выкладка из git на сервер (после push в origin)
-ssh vilmed 'cd /var/www/crm_prime_lt_usr/data/www/crm.prime-ltd.su && git pull'
+ssh vilmed 'cd /var/www/crm_prime_lt_usr/data/www/. && git pull'
 ```
 
 Если на сервере ещё нет remote git — синхронизировать через `scp`/`tar` только каталоги `app/`, `assets/`, `plugins/`, `system/` и корневые PHP-файлы. **Не затирать** `files/`, `writable/`, `app/Config/Database.php`, `.env`.
@@ -175,24 +176,24 @@ ssh vilmed 'cd /var/www/crm_prime_lt_usr/data/www/crm.prime-ltd.su && git pull'
 
 ## Локальные files/ (лёгкая копия)
 
-Локальный каталог `crm.prime-ltd.su/files/` **пустой** (~заглушки). Полные загрузки (~12 ГБ, в основном `timeline_files`) только на сервере.
+Локальный каталог `files/` **пустой** (~заглушки). Полные загрузки (~12 ГБ, в основном `timeline_files`) только на сервере.
 
 В `.env` (не в git):
 
 ```
-files.baseURL = 'https://crm.prime-ltd.su/'
+files.baseURL = 'https://'
 ```
 
 Тогда URL вложений и превью строятся на прод (`get_file_uri()`). На боевом сервере эту переменную **не** задавать.
 
-Вложенный `.git` внутри `crm.prime-ltd.su/` удалён — репозиторий только в корне проекта.
+Вложенный `.git` внутри `` удалён — репозиторий только в корне проекта.
 
 ## Что не коммитим
 
 - `app/Config/Database.php`, `.env` — секреты
 - `db/*.sql.gz` — данные клиентов
 - `files/`, содержимое `writable/` — тяжёлые/временные данные
-- `crm.prime-ltd.su.old-*` — локальные архивы
+- `..old-*` — локальные архивы
 
 ---
 
@@ -200,6 +201,6 @@ files.baseURL = 'https://crm.prime-ltd.su/'
 
 | Что | Путь |
 |-----|------|
-| Код сайта | `/var/www/crm_prime_lt_usr/data/www/crm.prime-ltd.su` |
+| Код сайта | `/var/www/crm_prime_lt_usr/data/www/.` |
 | Загрузки | `…/files/` (`timeline_files`, `general`, `profile_images`, …) |
 | Логи CI | `…/writable/logs/` |

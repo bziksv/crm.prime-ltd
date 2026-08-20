@@ -2,10 +2,9 @@
 db/
 *.sql
 *.sql.gz
-crm.prime-ltd.su.old-*/
-crm.prime-ltd.su/files/
-crm.prime-ltd.su/writable/
-crm.prime-ltd.su/mylog.txt
-crm.prime-ltd.su/system/
-crm.prime-ltd.su/updates/
+files/
+writable/
+mylog.txt
+system/
+updates/
 .DS_Store

@@ -8,33 +8,30 @@
 
 # Local env and secrets
 .env
-**/.env
-crm.prime-ltd.su/app/Config/Database.php
+app/Config/Database.php
 
 # Runtime / uploads (heavy; keep on server only)
-crm.prime-ltd.su/files/**
-!crm.prime-ltd.su/files/README.md
-!crm.prime-ltd.su/files/**/index.html
-crm.prime-ltd.su/writable/cache/
-crm.prime-ltd.su/writable/logs/
-crm.prime-ltd.su/writable/session/
-crm.prime-ltd.su/writable/uploads/
-crm.prime-ltd.su/writable/debugbar/
-crm.prime-ltd.su/updates/
-crm.prime-ltd.su/mylog.txt
+files/**
+!files/README.md
+!files/**/index.html
+writable/cache/
+writable/logs/
+writable/session/
+writable/uploads/
+writable/debugbar/
+updates/
+mylog.txt
 
-# Keep empty writable dirs in git via placeholders
-!crm.prime-ltd.su/writable/**/.gitkeep
-!crm.prime-ltd.su/writable/**/index.html
+# Keep empty writable dirs via placeholders
+!writable/**/.gitkeep
+!writable/**/index.html
 
-# Local DB dumps and old archives (do not push customer data)
+# Local DB dumps and compare artifacts
 db/
 *.sql
 *.sql.gz
 *.sql.zip
-crm.prime-ltd.su.old-*/
-*.old-*
 .compare/
 
-# Nested git metadata if any
-crm.prime-ltd.su/.git/
+# Nested git if any
+.git/

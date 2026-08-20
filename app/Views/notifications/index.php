@@ -5,7 +5,7 @@
                 <a href="<?php echo get_uri("notifications" .'?'. http_build_query($notifications_filter["params"])); ?>" class="btn btn-default round" title="<?php echo $notifications_filter["title"]; ?>"><?php echo $notifications_filter["title"]; ?></a>
                 <a href="<?php echo get_uri("notifications/delete_user_filter" .'?index='. $index); ?>" class="btn btn-default round" title=""><i data-feather='delete' class='icon-16'></i></a>
             </div>
-        <? endforeach; ?>
+        <?php endforeach; ?>
     </div>
 
     <div class="card">
@@ -84,10 +84,10 @@
                     ?>
                 </div>
                 <div class="col-2">
-                    <button type="submit" class="btn btn-default"><? echo app_lang('apply'); ?></button>
-                    <? if($params = request()->getGet()): ?>
+                    <button type="submit" class="btn btn-default"><?php echo app_lang('apply'); ?></button>
+                    <?php if ($params = request()->getGet()): ?>
                         <?php echo modal_anchor(get_uri("notifications/save_filter_modal_form" .'?'. http_build_query($params)), "<i data-feather='tag' class='icon-16'></i> " . app_lang('save'), array("class" => "btn btn-outline-light")); ?>
-                    <? endif; ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

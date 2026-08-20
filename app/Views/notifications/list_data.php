@@ -102,16 +102,16 @@ if (count($notifications)) {
                             echo preg_replace('#<a.*?>(.*?)</a>#i', '\1', view("notifications/notification_description", array("notification" => $notification, "changes_array" => $changes_array)));
                             ?>
                         </div>
-                        <? if ($notification->is_read): ?>
+                        <?php if ($notification->is_read): ?>
                             <small class="read-notify badge rounded-pill bg-info" style="font-size: 80%;">Прочитанное</small>
-                        <? else: ?>
+                        <?php else: ?>
                             <small class="unread-notify badge rounded-pill bg-primary" style="font-size: 80%;">
                                 Непрочитанное
-                                <? if(count($notification_ids) > 1): ?>
+                                <?php if (count($notification_ids) > 1): ?>
                                     ( <?php echo count($notification_ids); ?> )
-                                <? endif; ?>
+                                <?php endif; ?>
                             </small>
-                        <? endif; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </a>
