@@ -201,7 +201,12 @@ if (!function_exists('load_js')) {
         $version = get_setting("app_version");
 
         foreach ($array as $uri) {
-            echo "<script type='text/javascript'  src='" . base_url($uri) . "?v=$version'></script>";
+            $v = $version;
+            $path = FCPATH . ltrim(str_replace('\\', '/', (string) $uri), '/');
+            if (is_file($path)) {
+                $v .= '.' . filemtime($path);
+            }
+            echo "<script type='text/javascript'  src='" . base_url($uri) . "?v=$v'></script>";
         }
     }
 }

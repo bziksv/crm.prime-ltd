@@ -33,27 +33,37 @@ checkNotifications = function (params, updateStatus) {
             dataType: 'json',
             success: function (result) {
                 if (result.success) {
-                    if (result.total_notifications && result.total_notifications * 1) {
+                    var total = parseInt(result.total_notifications, 10) || 0;
 
+                    if (total > 0) {
                         //for new message notification, we'll also change the color of the chat icon.
                         if (params.isMessageNotification && window.prepareUnreadMessageChatBox) {
-                            window.prepareUnreadMessageChatBox(result.total_notifications);
+                            window.prepareUnreadMessageChatBox(total);
                         }
 
-                        params.notificationSelector.html("<i data-feather='" + params.icon + "' class='icon'></i> <span class='badge bg-danger up'>" + result.total_notifications + "</span>");
+                        params.notificationSelector.html("<i data-feather='" + params.icon + "' class='icon'></i> <span class='badge bg-danger up'>" + total + "</span>");
                         feather.replace();
 
                         //compaire if there are new notifications, if so, show the notification
-                        if (params.showPushNotification && params.notificationSelector.attr("data-total") != result.total_notifications) {
+                        if (params.showPushNotification && params.notificationSelector.attr("data-total") != total) {
                             playNotification();
                         }
 
-                        params.notificationSelector.attr("data-total", result.total_notifications);
-
-
+                        params.notificationSelector.attr("data-total", total);
+                    } else if (!updateStatus) {
+                        params.notificationSelector.html("<i data-feather='" + params.icon + "' class='icon'></i>");
+                        feather.replace();
+                        params.notificationSelector.attr("data-total", 0);
                     }
 
-                    params.notificationSelector.parent().find(".dropdown-details").html(result.notification_list);
+                    // Keep sidebar "Сообщения" badge in sync (same as tickets style).
+                    if (params.isMessageNotification && typeof window.primeSyncMessagesSidebarBadge === 'function') {
+                        window.primeSyncMessagesSidebarBadge(total);
+                    }
+
+                    if (result.notification_list) {
+                        params.notificationSelector.parent().find(".dropdown-details").html(result.notification_list);
+                    }
 
                     //get notifications list for mobile devices on page load
                     if (!updateStatus && params.notificationUrlForMobile) {
@@ -75,7 +85,12 @@ checkNotifications = function (params, updateStatus) {
                         $.ajax({
                             url: params.notificationStatusUpdateUrl,
                             success: function () {
-                                params.notificationSelector.html("<i data-feather='" + params.icon + "' class='icon'></i>");
+                                // Keep red badge if there are still unread chat messages.
+                                if (params.isMessageNotification && total > 0) {
+                                    params.notificationSelector.html("<i data-feather='" + params.icon + "' class='icon'></i> <span class='badge bg-danger up'>" + total + "</span>");
+                                } else {
+                                    params.notificationSelector.html("<i data-feather='" + params.icon + "' class='icon'></i>");
+                                }
                                 feather.replace();
                             }
                         });

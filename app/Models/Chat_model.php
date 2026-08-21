@@ -1078,7 +1078,7 @@ class Chat_model extends Crud_model {
         $sql = "SELECT COUNT(*) AS total FROM $msg cm
             INNER JOIN $m my ON my.conversation_id=cm.conversation_id AND my.user_id=$user_id AND my.deleted=0
             INNER JOIN $c ON $c.id=cm.conversation_id AND $c.deleted=0
-            WHERE cm.deleted=0 AND cm.from_user_id!=$user_id AND cm.id > IFNULL(my.last_read_message_id, 0)";
+            WHERE cm.deleted=0 AND cm.is_system=0 AND cm.from_user_id!=$user_id AND cm.id > IFNULL(my.last_read_message_id, 0)";
 
         $row = $this->db->query($sql)->getRow();
         return $row ? (int) $row->total : 0;

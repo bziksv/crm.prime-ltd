@@ -701,7 +701,12 @@ if (!function_exists('count_unread_message')) {
 
     function count_unread_message() {
         $ci = new Security_Controller(false);
-        return $ci->Messages_model->count_unread_message($ci->login_user->id, $ci->get_allowed_user_ids());
+        // Staff use the new messenger (chat_* tables).
+        if (!empty($ci->login_user->user_type) && $ci->login_user->user_type === 'staff') {
+            $Chat_model = model('App\Models\Chat_model');
+            return (int) $Chat_model->count_unread($ci->login_user->id);
+        }
+        return (int) $ci->Messages_model->count_unread_message($ci->login_user->id, $ci->get_allowed_user_ids());
     }
 
 }

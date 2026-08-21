@@ -382,6 +382,17 @@ class Messages extends Security_Controller {
             "active_message_id" => "numeric"
         ));
 
+        if ($this->login_user->user_type === 'staff') {
+            $Chat_model = new \App\Models\Chat_model();
+            $total = $Chat_model->count_unread($this->login_user->id);
+            echo json_encode(array(
+                "success" => true,
+                "active_message_id" => $this->request->getPost("active_message_id"),
+                "total_notifications" => $total,
+            ));
+            return;
+        }
+
         $notifiations = $this->Messages_model->count_notifications($this->login_user->id, $this->login_user->message_checked_at, $this->request->getPost("active_message_id"), $this->get_allowed_user_ids());
         echo json_encode(array("success" => true, "active_message_id" => $this->request->getPost("active_message_id"), 'total_notifications' => $notifiations));
     }
@@ -389,6 +400,24 @@ class Messages extends Security_Controller {
     /* prepare notifications */
 
     function get_notifications() {
+        if ($this->login_user->user_type === 'staff') {
+            $Chat_model = new \App\Models\Chat_model();
+            $inbox = $Chat_model->get_inbox($this->login_user->id, 40);
+            $notifications = array();
+            foreach ($inbox as $row) {
+                if ((int) ($row->unread_count ?? 0) < 1) {
+                    continue;
+                }
+                $notifications[] = $row;
+            }
+            $view_data['notifications'] = $notifications;
+            echo json_encode(array(
+                "success" => true,
+                "notification_list" => $this->template->view("messages/chat_notifications", $view_data),
+            ));
+            return;
+        }
+
         $options = array("user_id" => $this->login_user->id, "mode" => "inbox", "user_ids" => $this->get_allowed_user_ids(), "is_notification" => true);
         $view_data['notifications'] = $this->Messages_model->get_list($options)->getResult();
         echo json_encode(array("success" => true, 'notification_list' => $this->template->view("messages/notifications", $view_data)));
