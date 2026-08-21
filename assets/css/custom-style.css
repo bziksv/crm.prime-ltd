@@ -210,8 +210,9 @@ body:has(.prime-messenger-page) .main-scrollable-page {
 
 .prime-messenger-item {
     width: 100%;
-    display: flex;
-    align-items: center;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
     gap: 12px;
     padding: 11px 14px;
     border: 0;
@@ -293,11 +294,16 @@ body:has(.prime-messenger-page) .main-scrollable-page {
     width: 42px;
     height: 42px;
     flex-shrink: 0;
+    overflow: hidden;
+    border-radius: 50%;
 }
 
 .prime-messenger-avatar img {
-    width: 42px;
-    height: 42px;
+    display: block;
+    width: 42px !important;
+    height: 42px !important;
+    max-width: 42px !important;
+    max-height: 42px !important;
     border-radius: 50%;
     object-fit: cover;
 }

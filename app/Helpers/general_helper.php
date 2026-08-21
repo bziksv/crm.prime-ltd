@@ -176,7 +176,13 @@ if (!function_exists('load_css')) {
         $version = get_setting("app_version");
 
         foreach ($array as $uri) {
-            echo "<link rel='stylesheet' type='text/css' href='" . base_url($uri) . "?v=$version' />";
+            $v = $version;
+            // Bust browser cache when the file actually changes (esp. custom-style.css).
+            $path = FCPATH . ltrim(str_replace('\\', '/', (string) $uri), '/');
+            if (is_file($path)) {
+                $v .= '.' . filemtime($path);
+            }
+            echo "<link rel='stylesheet' type='text/css' href='" . base_url($uri) . "?v=$v' />";
         }
     }
 }
