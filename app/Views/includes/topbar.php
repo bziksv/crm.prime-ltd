@@ -99,6 +99,24 @@
                         <?php reminders_widget(); ?>
                     <?php } ?>
 
+                    <?php if (get_setting("module_ticket") && ($login_user->user_type === "staff" || $login_user->user_type === "client")) { ?>
+                        <?php
+                        $ticket_notifications_url = get_uri("notifications") . "?" . http_build_query(array(
+                            "notification_event_filter" => "ticket_created,ticket_commented",
+                            "notification_is_read_filter" => "0",
+                            "notification_team_members_filter" => "",
+                            "notification_projects_filter" => "",
+                            "notification_grouped_filter" => "",
+                            "notification_order_by_filter" => "",
+                        ));
+                        ?>
+                        <li class="nav-item">
+                            <a href="<?php echo $ticket_notifications_url; ?>" id="ticket-notification-icon" class="nav-link" title="<?php echo app_lang('unread_ticket_notifications'); ?>">
+                                <i data-feather="life-buoy" class="icon"></i>
+                            </a>
+                        </li>
+                    <?php } ?>
+
                     <li class="nav-item dropdown">
                         <?php echo js_anchor("<i data-feather='bell' class='icon'></i>", array("id" => "web-notification-icon", "class" => "nav-link dropdown-toggle", "data-bs-toggle" => "dropdown")); ?>
                         <div class="dropdown-menu dropdown-menu-end notification-dropdown w400">
@@ -215,6 +233,39 @@
         notificationOptions.pushNotification = "<?php echo get_setting("enable_push_notification") && $login_user->enable_web_notification && !get_setting('user_' . $login_user->id . '_disable_push_notification') ? true : false ?>";
 
         checkNotifications(notificationOptions); //start checking notification after starting the message checking
+
+        // unread ticket created / ticket commented shortcut
+        var ticketNotificationIcon = $("#ticket-notification-icon");
+        if (ticketNotificationIcon.length) {
+            var checkTicketNotifications = function () {
+                $.ajax({
+                    url: "<?php echo_uri('notifications/count_ticket_notifications'); ?>",
+                    type: "POST",
+                    dataType: "json",
+                    success: function (result) {
+                        if (!result || !result.success) {
+                            return;
+                        }
+                        var total = Number(result.total_notifications) || 0;
+                        var html = "<i data-feather='life-buoy' class='icon'></i>";
+                        if (total > 0) {
+                            html += " <span class='badge bg-danger up'>" + total + "</span>";
+                        }
+                        ticketNotificationIcon.html(html);
+                        feather.replace();
+                    },
+                    complete: function () {
+                        var checkEvery = Number("<?php echo get_setting('check_notification_after_every'); ?>") * 1000;
+                        if (checkEvery < 10000) {
+                            checkEvery = 10000;
+                        }
+                        setTimeout(checkTicketNotifications, checkEvery);
+                    }
+                });
+            };
+
+            checkTicketNotifications();
+        }
 
         if (isMobile()) {
             //for mobile devices, load the notifications list with the page load

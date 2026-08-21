@@ -7,9 +7,16 @@
     if (!isset($validation_url)) {
         $validation_url = get_uri("uploader/validate_file");
     }
+    $inline_svg_icons = !empty($inline_svg_icons);
+    $upload_icon_name = $upload_button_icon ?? 'camera';
+    $paperclip_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>';
+    $mic_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>';
+    $upload_icon_html = $inline_svg_icons
+        ? ($upload_icon_name === 'paperclip' ? $paperclip_svg : '<i data-feather="' . esc($upload_icon_name) . '" class="icon-16"></i>')
+        : '<i data-feather="' . esc($upload_icon_name) . '" class="icon-16"></i>';
     ?>
 
-    <button id="<?php echo $upload_button_id; ?>" class="btn btn-default upload-file-button float-start round" type="button" style="color:#7988a2"><i data-feather="camera" class="icon-16"></i> <?php
+    <button id="<?php echo $upload_button_id; ?>" class="btn btn-default upload-file-button float-start round" type="button" style="color:#525c69" title="<?php echo app_lang('upload_file'); ?>" aria-label="<?php echo app_lang('upload_file'); ?>"><?php echo $upload_icon_html; ?><?php
         if (isset($upload_button_text)) {
             echo $upload_button_text;
         } else {
@@ -23,13 +30,28 @@
     if(!$https){
         $https = (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
     }
+    // Chrome/Firefox allow mic on localhost without HTTPS
+    if (!$https && function_exists('is_localhost') && is_localhost()) {
+        $https = true;
+    }
+    // Built-in PHP server / local CRM hostname
+    if (!$https) {
+        $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false || strpos($host, '.local') !== false) {
+            $https = true;
+        }
+    }
 
     $show_recording = get_setting("enable_audio_recording");
+    if (!empty($force_show_recording)) {
+        $show_recording = true;
+        $https = true;
+    }
 
     if ($show_recording && $https) {
         ?>
-        <button type="button" id="record-start-button" class="btn btn-default record-start-btn ml10" style="color:#7988a2"><i data-feather="mic" class="icon-16"></i></button>
-        <button type="button" id="record-stop-button" class="btn btn-default record-end-btn ml10 hide"><div class="stop-recording"></div></button>
+        <button type="button" id="record-start-button" class="btn btn-default record-start-btn ml10" style="color:#525c69" title="Голосовое сообщение" aria-label="Голосовое сообщение"><?php echo $inline_svg_icons ? $mic_svg : '<i data-feather="mic" class="icon-16"></i>'; ?></button>
+        <button type="button" id="record-stop-button" class="btn btn-default record-end-btn ml10 hide" title="Стоп" aria-label="Стоп"><div class="stop-recording"></div></button>
         <span class="recording-text ml5 hide"><?php echo app_lang('recording'); ?></span>
 
         <?php
@@ -38,7 +60,7 @@
         ));
     } else if ($show_recording && !$https) {
         ?>
-        <span class="help" data-bs-toggle="tooltip" title="<?php echo app_lang('https_required'); ?>"><span class="btn btn-default record-start-btn disabled opacity-25 ml10"><i data-feather="mic" class="icon-16"></i></span></span>
+        <span class="help" data-bs-toggle="tooltip" title="<?php echo app_lang('https_required'); ?>"><span class="btn btn-default record-start-btn disabled opacity-25 ml10"><?php echo $inline_svg_icons ? $mic_svg : '<i data-feather="mic" class="icon-16"></i>'; ?></span></span>
 
     <?php }
     ?>

@@ -1,19 +1,36 @@
 <?php
-//load chat ui if chat module is enabled
-
+// Floating chat UI — staff use new Chat (DM + groups), clients keep classic Rise messages.
 $can_chat = can_access_messages_module();
 
 if (get_setting("module_chat") && $can_chat) {
+    $is_staff_chat = isset($login_user) && $login_user->user_type === 'staff';
+    $chat_list_url = $is_staff_chat ? get_uri('chat/panel') : get_uri('messages/chat_list');
+    $inbox_uri = get_uri('messages/inbox');
     ?>
     <div id="js-init-chat-icon" class="init-chat-icon">
         <!-- data-type= open/close/unread -->
         <span id="js-chat-min-icon" data-type="open" class="chat-min-icon"><i data-feather="message-circle" class="icon-18"></i></span>
     </div>
 
-    <div id="js-rise-chat-wrapper" class="rise-chat-wrapper hide"></div>
+    <div id="js-rise-chat-wrapper" class="rise-chat-wrapper hide <?php echo $is_staff_chat ? 'is-prime-chat' : ''; ?>"></div>
 
     <script type="text/javascript">
         $(document).ready(function () {
+
+            var isStaffChat = <?php echo $is_staff_chat ? 'true' : 'false'; ?>;
+            window.primeChatListUrl = <?php echo json_encode($chat_list_url); ?>;
+            var inboxUri = <?php echo json_encode($inbox_uri); ?>;
+
+            if (typeof window.openPrimeConversation !== 'function') {
+                window.openPrimeConversation = function (conversationId) {
+                    conversationId = parseInt(conversationId, 10) || 0;
+                    if (!conversationId) {
+                        window.location.href = inboxUri;
+                        return;
+                    }
+                    window.location.href = inboxUri.replace(/\/$/, '') + '/' + conversationId;
+                };
+            }
 
             chatIconContent = {
                 "open": "<i data-feather='message-circle' class='icon-18'></i>",
@@ -63,7 +80,12 @@ if (get_setting("module_chat") && $can_chat) {
             $chatIcon.click(function () {
                 $("#js-rise-chat-wrapper").html("");
 
-                window.updateLastMessageCheckingStatus();
+                if (typeof window.updateLastMessageCheckingStatus === "function") {
+                    window.updateLastMessageCheckingStatus();
+                }
+                if (isStaffChat) {
+                    pollPrimeChatUnread();
+                }
 
                 var $chatIcon = $("#js-chat-min-icon");
 
@@ -105,15 +127,18 @@ if (get_setting("module_chat") && $can_chat) {
                 if (typeof window.placeCartBox === "function") {
                     window.placeCartBox();
                 }
-                
-                feather.replace();
+
+                if (typeof feather !== 'undefined') {
+                    feather.replace();
+                }
 
             });
 
             //open chat box
             if (isChatBoxOpen) {
-
-                if (activeChatId) {
+                if (isStaffChat) {
+                    loadChatTabs();
+                } else if (activeChatId) {
                     getActiveChat(activeChatId);
                 } else {
                     loadChatTabs();
@@ -127,9 +152,6 @@ if (get_setting("module_chat") && $can_chat) {
                 }
             }
 
-
-
-
             $('body #js-rise-chat-wrapper').on('click', '.js-message-row', function () {
                 getActiveChat($(this).attr("data-id"));
             });
@@ -142,6 +164,30 @@ if (get_setting("module_chat") && $can_chat) {
                 getChatlistOfUser($(this).attr("data-id"), "clients");
             });
 
+            function pollPrimeChatUnread() {
+                if (!isStaffChat) {
+                    return;
+                }
+                $.ajax({
+                    url: "<?php echo get_uri('chat/count_unread'); ?>",
+                    type: "POST",
+                    dataType: "json",
+                    success: function (result) {
+                        if (!result || !result.success) {
+                            return;
+                        }
+                        var total = parseInt(result.total_notifications, 10) || 0;
+                        if (total > 0 && $("#js-chat-min-icon").attr("data-type") === "open") {
+                            window.prepareUnreadMessageChatBox(total);
+                        }
+                    }
+                });
+            }
+
+            if (isStaffChat) {
+                pollPrimeChatUnread();
+                setInterval(pollPrimeChatUnread, 30000);
+            }
 
         });
 
@@ -168,20 +214,28 @@ if (get_setting("module_chat") && $can_chat) {
             setCookie("active_chat_id", "");
             appLoader.show({container: "#js-rise-chat-wrapper", css: "bottom: 40%; right: 35%;"});
             $.ajax({
-                url: "<?php echo get_uri("messages/chat_list"); ?>",
+                url: window.primeChatListUrl || <?php echo json_encode($chat_list_url); ?>,
                 data: {
                     type: "inbox"
                 },
                 success: function (response) {
                     $("#js-rise-chat-wrapper").html(response);
 
-                    if (!trigger_from_user_chat) {
-                        $("#chat-inbox-tab-button a").trigger("click");
-                    } else if (trigger_from_user_chat === "team_members") {
-                        $("#chat-users-tab-button").find("a").trigger("click");
-                    } else if (trigger_from_user_chat === "clients") {
-                        $("#chat-clients-tab-button").find("a").trigger("click");
+                    if (!<?php echo $is_staff_chat ? 'true' : 'false'; ?>) {
+                        if (!trigger_from_user_chat) {
+                            $("#chat-inbox-tab-button a").trigger("click");
+                        } else if (trigger_from_user_chat === "team_members") {
+                            $("#chat-users-tab-button").find("a").trigger("click");
+                        } else if (trigger_from_user_chat === "clients") {
+                            $("#chat-clients-tab-button").find("a").trigger("click");
+                        }
                     }
+                    if (typeof feather !== 'undefined') {
+                        feather.replace();
+                    }
+                    appLoader.hide();
+                },
+                error: function () {
                     appLoader.hide();
                 }
             });
@@ -214,10 +268,14 @@ if (get_setting("module_chat") && $can_chat) {
 
 
         window.triggerActiveChat = function (message_id) {
+            if (<?php echo $is_staff_chat ? 'true' : 'false'; ?>) {
+                window.openPrimeConversation(message_id);
+                return;
+            }
             getActiveChat(message_id);
         }
 
-    </script>  
+    </script>
 
 
 <?php } ?>

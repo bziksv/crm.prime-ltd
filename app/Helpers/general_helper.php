@@ -71,6 +71,11 @@ if (!function_exists('get_file_uri')) {
         $filesBase = env('files.baseURL');
         $normalized = ltrim((string) $uri, '/');
         if ($filesBase && str_starts_with($normalized, 'files/')) {
+            // Local uploads must preview from this host even when files.baseURL points to production.
+            $local_path = FCPATH . $normalized;
+            if (is_file($local_path)) {
+                return base_url($normalized);
+            }
             return rtrim((string) $filesBase, '/') . '/' . $normalized;
         }
 
@@ -104,6 +109,57 @@ if (!function_exists('get_avatar')) {
         } else {
             return base_url("assets/images/avatar.jpg");
         }
+    }
+}
+
+if (!function_exists('prime_chat_group_system_icons')) {
+    function prime_chat_group_system_icons() {
+        return array(
+            'users' => array('label' => 'Команда', 'color' => '#2fc6f6'),
+            'briefcase' => array('label' => 'Работа', 'color' => '#6366f1'),
+            'home' => array('label' => 'Офис', 'color' => '#0ea5e9'),
+            'star' => array('label' => 'Избранное', 'color' => '#f59e0b'),
+            'zap' => array('label' => 'Срочное', 'color' => '#ef4444'),
+            'heart' => array('label' => 'HR', 'color' => '#ec4899'),
+            'coffee' => array('label' => 'Неформал', 'color' => '#a16207'),
+            'code' => array('label' => 'IT', 'color' => '#10b981'),
+            'layers' => array('label' => 'Проект', 'color' => '#8b5cf6'),
+            'globe' => array('label' => 'Внешнее', 'color' => '#64748b'),
+        );
+    }
+}
+
+if (!function_exists('prime_chat_group_avatar_html')) {
+    /**
+     * Render group avatar: system icon (icon:name) or uploaded image serialize/path.
+     */
+    function prime_chat_group_avatar_html($avatar = '', $size = '') {
+        $size_class = $size ? ' ' . trim($size) : '';
+        $avatar = trim((string) $avatar);
+        $icons = prime_chat_group_system_icons();
+
+        if ($avatar !== '' && strpos($avatar, 'icon:') === 0) {
+            $key = substr($avatar, 5);
+            if (!isset($icons[$key])) {
+                $key = 'users';
+            }
+            $color = $icons[$key]['color'];
+            return '<span class="prime-messenger-avatar-group' . $size_class . '" style="background:' . $color . '1a;color:' . $color . '">'
+                . '<i data-feather="' . esc($key) . '" class="icon-14"></i></span>';
+        }
+
+        if ($avatar !== '') {
+            $file = @unserialize($avatar);
+            if (is_array($file)) {
+                $url = get_source_url_of_file($file, get_setting("profile_image_path") . "/", "thumbnail");
+            } else {
+                $url = get_file_uri(rtrim(get_setting("profile_image_path"), '/') . '/' . ltrim($avatar, '/'));
+            }
+            return '<span class="prime-messenger-avatar-group has-image' . $size_class . '">'
+                . '<img src="' . esc($url) . '" alt=""></span>';
+        }
+
+        return '<span class="prime-messenger-avatar-group' . $size_class . '"><i data-feather="users" class="icon-14"></i></span>';
     }
 }
 
@@ -415,6 +471,168 @@ if (!function_exists('link_it')) {
         } else {
             return preg_replace('@(https?://([-\w\.]+[-\w])+(:\d+)?(/([\w/_\.#-]*(\?\S+)?[^\.\s]?[^\s]+)?)?)@', '<a href="$1" target="_blank">$1</a>', $text);
         }
+    }
+}
+
+/**
+ * Render chat message text with fenced/inline code highlighting.
+ * Supports ```lang ... ``` blocks and `inline` code. HTML is escaped.
+ */
+if (!function_exists('format_prime_chat_message')) {
+
+    function format_prime_chat_message($text)
+    {
+        $text = str_replace(array("\r\n", "\r"), "\n", (string) $text);
+        $blocks = array();
+        $inlines = array();
+
+        $text = preg_replace_callback('/```([a-zA-Z0-9_+-]*)[ \t]*\n?([\s\S]*?)```/', function ($m) use (&$blocks) {
+            $token = '%%PMCODEB' . count($blocks) . '%%';
+            $blocks[$token] = array(
+                'lang' => strtolower(trim($m[1])),
+                'code' => rtrim($m[2], "\n"),
+            );
+            return $token;
+        }, $text);
+
+        $text = preg_replace_callback('/`([^`\n]+)`/', function ($m) use (&$inlines) {
+            $token = '%%PMCODEI' . count($inlines) . '%%';
+            $inlines[$token] = $m[1];
+            return $token;
+        }, $text);
+
+        $html = htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $html = preg_replace(
+            '@(https?://[^\s<]+[^\s<.,;:!?"\'\)\]])@i',
+            '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+            $html
+        );
+        $html = nl2br($html);
+
+        foreach ($inlines as $token => $code) {
+            $safe = htmlspecialchars($code, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $html = str_replace(
+                htmlspecialchars($token, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                '<code class="pm-inline-code">' . $safe . '</code>',
+                $html
+            );
+        }
+
+        foreach ($blocks as $token => $block) {
+            $safe = htmlspecialchars($block['code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $lang = preg_replace('/[^a-z0-9_+-]/', '', $block['lang']);
+            $lang_attr = $lang ? ' data-lang="' . $lang . '"' : '';
+            $lang_label = $lang
+                ? '<span class="pm-code-lang">' . htmlspecialchars($lang, ENT_QUOTES, 'UTF-8') . '</span>'
+                : '<span class="pm-code-lang">code</span>';
+            $copy_btn = '<button type="button" class="pm-code-copy js-pm-copy-code" title="Копировать код" aria-label="Копировать код">'
+                . '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+                . '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>'
+                . '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>'
+                . '</svg>'
+                . '<span class="pm-code-copy-label">Копировать</span>'
+                . '</button>';
+            $replacement = '<div class="pm-code-block"' . $lang_attr . '>'
+                . '<div class="pm-code-toolbar">' . $lang_label . $copy_btn . '</div>'
+                . '<pre><code>' . $safe . '</code></pre>'
+                . '</div>';
+            $html = str_replace(
+                htmlspecialchars($token, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                $replacement,
+                $html
+            );
+        }
+
+        return prime_chat_render_animated_emojis($html);
+    }
+}
+
+if (!function_exists('prime_chat_emoji_to_codepoint')) {
+    function prime_chat_emoji_to_codepoint($emoji)
+    {
+        $emoji = (string) $emoji;
+        if ($emoji === '') {
+            return '';
+        }
+        $hex = array();
+        $len = mb_strlen($emoji, 'UTF-8');
+        for ($i = 0; $i < $len; $i++) {
+            $ch = mb_substr($emoji, $i, 1, 'UTF-8');
+            $bin = mb_convert_encoding($ch, 'UCS-4BE', 'UTF-8');
+            if ($bin === false || strlen($bin) < 4) {
+                continue;
+            }
+            $cp = unpack('N', $bin)[1];
+            if ($cp === 0xFE0F || $cp === 0xFE0E) {
+                continue; // variation selectors
+            }
+            $hex[] = dechex($cp);
+        }
+        return implode('_', $hex);
+    }
+}
+
+if (!function_exists('prime_chat_render_animated_emojis')) {
+    /**
+     * Replace emoji graphemes with Google Noto Animated Emoji (webp).
+     * Falls back to native glyph if asset missing (onerror).
+     */
+    function prime_chat_render_animated_emojis($html)
+    {
+        if ($html === '' || $html === null) {
+            return $html;
+        }
+
+        // Skip inside tags / code already rendered as HTML elements — match text outside tags roughly
+        return preg_replace_callback(
+            '/(?<!["\'=])(?:\p{Extended_Pictographic}(?:\x{FE0F})?(?:\x{200D}\p{Extended_Pictographic}(?:\x{FE0F})?)*|\x{2764}\x{FE0F}?|\x{2665}\x{FE0F}?)/u',
+            function ($m) {
+                $emoji = $m[0];
+                $cp = prime_chat_emoji_to_codepoint($emoji);
+                if ($cp === '') {
+                    return $emoji;
+                }
+                $url = 'https://fonts.gstatic.com/s/e/notoemoji/latest/' . $cp . '/512.webp';
+                $alt = htmlspecialchars($emoji, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                return '<img class="pm-emoji" src="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" alt="' . $alt . '" draggable="false" loading="lazy" decoding="async" onerror="this.outerHTML=this.alt;">';
+            },
+            $html
+        );
+    }
+}
+
+if (!function_exists('prime_chat_count_emojis')) {
+    function prime_chat_count_emojis($text)
+    {
+        $text = (string) $text;
+        if ($text === '') {
+            return 0;
+        }
+        if (!preg_match_all(
+            '/(?:\p{Extended_Pictographic}(?:\x{FE0F})?(?:\x{200D}\p{Extended_Pictographic}(?:\x{FE0F})?)*|\x{2764}\x{FE0F}?|\x{2665}\x{FE0F}?)/u',
+            $text,
+            $m
+        )) {
+            return 0;
+        }
+        return count($m[0]);
+    }
+}
+
+if (!function_exists('prime_chat_is_emoji_only_message')) {
+    function prime_chat_is_emoji_only_message($text)
+    {
+        $text = trim((string) $text);
+        if ($text === '') {
+            return false;
+        }
+        $stripped = preg_replace(
+            '/(?:\p{Extended_Pictographic}(?:\x{FE0F})?(?:\x{200D}\p{Extended_Pictographic}(?:\x{FE0F})?)*|\x{2764}\x{FE0F}?|\x{2665}\x{FE0F}?)/u',
+            '',
+            $text
+        );
+        $stripped = preg_replace('/[\s\x{200B}\x{200C}\x{200D}\x{FE0F}\x{FE0E}]+/u', '', (string) $stripped);
+        return $stripped === '' && prime_chat_count_emojis($text) > 0;
     }
 }
 

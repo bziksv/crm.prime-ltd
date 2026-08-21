@@ -1,5 +1,14 @@
 <div id="page-content" class="page-wrapper clearfix">
 
+    <?php if (!empty($show_back_to_messenger)) { ?>
+        <div class="mb15">
+            <a href="<?php echo get_uri('messages/inbox'); ?>" class="btn btn-default btn-sm">
+                <i data-feather="arrow-left" class="icon-14"></i> К новому чату
+            </a>
+            <span class="text-off ms-2">Старые переписки (по темам)</span>
+        </div>
+    <?php } ?>
+
     <div class="row">
 
         <div class="box">
@@ -7,9 +16,11 @@
                 <ul class="list-group ">
                     <?php echo modal_anchor(get_uri("messages/modal_form"), app_lang('compose'), array("class" => "list-group-item", "title" => app_lang('send_message'))); ?> 
 
-                    <?php echo anchor(get_uri("messages/inbox"), app_lang('inbox'), array("class" => "list-group-item")); ?>
+                    <?php echo anchor(get_uri("messages/classic"), app_lang('inbox'), array("class" => "list-group-item")); ?>
 
                     <?php echo anchor(get_uri("messages/sent_items"), app_lang('sent_items'), array("class" => "list-group-item")); ?>
+
+                    <?php echo anchor(get_uri("messages/inbox"), "Новый чат", array("class" => "list-group-item")); ?>
                 </ul>
             </div>
 

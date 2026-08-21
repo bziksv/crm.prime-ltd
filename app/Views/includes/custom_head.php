@@ -1,3 +1,5 @@
 <?php
 
-// add your custom header here.
+load_js(array(
+    "assets/js/custom-summernote-autolink.js",
+));

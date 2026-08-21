@@ -27,8 +27,12 @@ class Rise extends BaseConfig {
         "request_estimate.*+",
         "events/snooze_reminder", "events/reminder_view", "events/save_reminder_status",
         "cron",
-        "notifications/count_notifications", "notifications/get_notifications",
+        "notifications/count_notifications", "notifications/count_ticket_notifications", "notifications/get_notifications",
         "messages/count_notifications",
+        "chat/count_unread", "chat/poll", "chat/panel", "chat/start_dm", "chat/create_group", "chat/send", "chat/conversation",
+        "chat/toggle_pin", "chat/filter_messages", "chat/clear_history", "chat/delete_conversation", "chat/edit_message", "chat/staff_profile",
+        "chat/mark_read", "chat/toggle_star", "chat/group_info", "chat/remove_member", "chat/add_members", "chat/set_group_avatar",
+        "chat/save_auto_cleanup",
         "microsoft_api/save_outlook_smtp_access_token",
         "event_tracker.*+"
     );

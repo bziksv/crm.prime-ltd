@@ -333,6 +333,31 @@ function telegram_send($bot_token, $chat_id, $text)
     return isset($decoded->ok) && $decoded->ok;
 }
 
+/**
+ * Per-project channel toggle (Telegram / Synology).
+ * Missing row = enabled (backward compatible).
+ */
+function is_project_notification_channel_enabled($user_id, $project_id, $channel): bool
+{
+    if (!$user_id || !$project_id || !$channel) {
+        return true;
+    }
+
+    $db = \Config\Database::connect();
+    $setting = $db->table('telegram_project_role_settings')
+        ->where('user_id', $user_id)
+        ->where('project_id', $project_id)
+        ->where('role', $channel)
+        ->get()
+        ->getRow();
+
+    if (!$setting) {
+        return true;
+    }
+
+    return (bool) $setting->enabled;
+}
+
 /* --------------------------------------------------------------------------
    HELPERS
 ---------------------------------------------------------------------------*/
@@ -680,11 +705,17 @@ if (!function_exists('send_telegram_notification')) {
 
                     if ($setting) {
         
-                        if(isset($user->telegram_chat_id)) {
+                        if (
+                            isset($user->telegram_chat_id)
+                            && is_project_notification_channel_enabled($user->id, $task->project_id, 'Telegram')
+                        ) {
                             telegram_send(get_telegram_notification_setting("bot_token"), $user->telegram_chat_id, $notificationText);
                         }
 
-                        if(isset($user->prime_webhook_url)) {
+                        if (
+                            isset($user->prime_webhook_url)
+                            && is_project_notification_channel_enabled($user->id, $task->project_id, 'Synology')
+                        ) {
                             try {
                                 $response = sendPrimeNotification($user->prime_webhook_url, $notificationText);
                             } catch (\Exception $ex) {

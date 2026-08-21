@@ -761,7 +761,9 @@ class Team_members extends Security_Controller {
         $roles_map = [
             "Создатель задачи",
             "Исполнитель",
-            "Участник"
+            "Участник",
+            "Telegram",
+            "Synology",
         ];
 
         $projects = $this->Projects_model->get_details([

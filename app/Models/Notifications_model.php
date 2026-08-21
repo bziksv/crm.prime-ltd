@@ -1173,6 +1173,42 @@ class Notifications_model extends Crud_model {
         }
     }
 
+    /**
+     * Count unread notifications for the user filtered by event names.
+     */
+    function count_unread_by_events($user_id, array $events) {
+        $notifications_table = $this->db->prefixTable('notifications');
+        $user_id = intval($user_id);
+
+        $clean_events = array();
+        foreach ($events as $event) {
+            $event = preg_replace('/[^a-z0-9_]/i', '', (string) $event);
+            if ($event !== '') {
+                $clean_events[] = $event;
+            }
+        }
+
+        if (!$user_id || !$clean_events) {
+            return 0;
+        }
+
+        $in = "'" . implode("','", $clean_events) . "'";
+
+        $sql = "SELECT COUNT($notifications_table.id) AS total_notifications
+        FROM $notifications_table
+        WHERE $notifications_table.deleted=0
+            AND FIND_IN_SET($user_id, $notifications_table.notify_to) != 0
+            AND FIND_IN_SET($user_id, $notifications_table.read_by) = 0
+            AND $notifications_table.event IN ($in)";
+
+        $result = $this->db->query($sql);
+        if ($result->resultID->num_rows) {
+            return (int) $result->getRow()->total_notifications;
+        }
+
+        return 0;
+    }
+
     /* update message ustats */
 
     function set_notification_status_as_read($notification_id, $user_id = 0) {

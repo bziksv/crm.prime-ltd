@@ -45,6 +45,11 @@ class Notifications extends Security_Controller {
         echo json_encode(array("success" => true, 'total_notifications' => $notifiations));
     }
 
+    function count_ticket_notifications() {
+        $total = $this->Notifications_model->count_unread_by_events($this->login_user->id, array("ticket_created", "ticket_commented"));
+        echo json_encode(array("success" => true, "total_notifications" => $total));
+    }
+
     function get_notifications() {
         $view_data = $this->_prepare_notification_list();
         $view_data["result_remaining"] = false; //don't show load more option in notification popop
@@ -129,8 +134,12 @@ class Notifications extends Security_Controller {
 
         $notifiations = $this->Notifications_model->get_notifications($this->login_user->id, $offset, 100, $options);
 
-        if (empty($options['grouped'])) {
-            $notifiations->result = (new NotificationGrouper($notifiations->result))->get_grouped_unread_by_task();
+        // Group only when explicitly requested. Default is off so each unread
+        // comment is a separate row (empty("0") previously treated "Да" as on).
+        if ($this->should_group_notifications($options['grouped'])) {
+            $notifiations->result = array_values(
+                (new NotificationGrouper($notifiations->result))->get_grouped_unread_by_task()
+            );
         }
 
         $view_data['notifications'] = $notifiations->result;
@@ -192,9 +201,29 @@ class Notifications extends Security_Controller {
     {
         return [
             ["id" => "", "text" => "- " . app_lang("grouped") . " -"],
-            ["id" => "0", "text" => "Да"],
-            ["id" => "1", "text" => "Нет"],
+            ["id" => "yes", "text" => "Да"],
+            ["id" => "no", "text" => "Нет"],
         ];
+    }
+
+    /**
+     * Whether to collapse unread notifications by task/ticket.
+     * Accepts new yes/no and legacy 0/1 query values.
+     */
+    private function should_group_notifications($grouped): bool
+    {
+        if ($grouped === null || $grouped === '') {
+            return false;
+        }
+
+        $grouped = (string) $grouped;
+
+        // Legacy: "0" = Да, "1" = Нет (was inverted vs empty() checks)
+        if ($grouped === 'yes' || $grouped === '0') {
+            return true;
+        }
+
+        return false;
     }
 
     function order_by_dropdown(): array

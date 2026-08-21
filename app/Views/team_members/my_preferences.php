@@ -288,13 +288,15 @@
                         <div class="table-responsive" style="overflow:auto; max-height:500px;">                            
                             <table id="projects-notifications-table"
                                 class="table table-bordered table-striped text-center align-middle mb-0 w-100"
-                                style="min-width:900px;">
+                                style="min-width:1100px;">
                                 <thead class="table-light">
                                     <tr>
                                         <th style="min-width:220px;">Проект</th>
                                         <th>Ответственный</th>
                                         <th>Исполнитель</th>
                                         <th>Участник</th>
+                                        <th>Телега</th>
+                                        <th>Синолоджи</th>
                                     </tr>
                                     <tr>
                                         <th></th>
@@ -310,6 +312,14 @@
                                         <th class="text-center align-middle">
                                             <input type="checkbox" class="check-all" data-col="3">
                                         </th>
+
+                                        <th class="text-center align-middle">
+                                            <input type="checkbox" class="check-all" data-col="4">
+                                        </th>
+
+                                        <th class="text-center align-middle">
+                                            <input type="checkbox" class="check-all" data-col="5">
+                                        </th>
                                     </tr>
                                 </thead>
 
@@ -319,6 +329,10 @@
                                             "Создатель задачи",
                                             "Исполнитель",
                                             "Участник"
+                                        ];
+                                        $channels = [
+                                            "Telegram" => "Телега",
+                                            "Synology" => "Синолоджи",
                                         ];
                                     ?>
                                     <?php foreach ($my_projects as $project) : ?>
@@ -335,6 +349,20 @@
                                                         name="notifications[<?= $project->id; ?>][<?= md5($role); ?>]"
                                                         value="1"
                                                         <?= !empty($settings_map[$project->id][$role]) ? "checked" : ""; ?>>
+                                                </td>
+                                            <?php endforeach; ?>
+
+                                            <?php foreach ($channels as $channel_key => $channel_label) : ?>
+                                                <?php
+                                                // Default ON if user never saved channel prefs for this project
+                                                $channel_checked = !isset($settings_map[$project->id][$channel_key])
+                                                    || !empty($settings_map[$project->id][$channel_key]);
+                                                ?>
+                                                <td class="text-center">
+                                                    <input type="checkbox"
+                                                        name="notifications[<?= $project->id; ?>][<?= md5($channel_key); ?>]"
+                                                        value="1"
+                                                        <?= $channel_checked ? "checked" : ""; ?>>
                                                 </td>
                                             <?php endforeach; ?>
 
@@ -396,7 +424,7 @@
             order: [[0, 'asc']],
             pageLength: -1,
             lengthMenu: [[-1], ["Все"]],
-            columnDefs: [{ orderable: false, targets: [1,2,3] }],
+            columnDefs: [{ orderable: false, targets: [1,2,3,4,5] }],
             searching: false,
             language: {
                 processing: "Обработка...",

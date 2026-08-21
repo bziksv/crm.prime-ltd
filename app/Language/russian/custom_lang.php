@@ -13,5 +13,13 @@ $lang["notification_filter"] = "Фильтр уведомлений";
 $lang["apply"] = "Применить";
 $lang["send_notification"] = "Отправить уведомление";
 $lang["error_occurred"] = "Произошла ошибка";
+$lang["unread_ticket_notifications"] = "Непрочитанные по заявкам";
+$lang["new_group"] = "Новая группа";
+$lang["start_chat"] = "Написать";
+$lang["chat_members"] = "Участники";
+$lang["chat_group_name"] = "Название группы";
+$lang["no_chats_yet"] = "Пока нет переписок";
+$lang["search_people"] = "Поиск сотрудников";
+$lang["group"] = "Группа";
 
 return $lang;

@@ -356,7 +356,7 @@ $(document).ready(function () {
         addCommentLink(e);
     });
 
-    //summernote
+    //summernote: task-comment deep links (plain URL → <a> handled in custom-summernote-autolink.js)
     $('body').on('summernote.paste', function (e, ne) {
         addCommentLink(ne);
     });

@@ -69,8 +69,37 @@ class Messages extends Security_Controller {
         $this->check_message_user_permission();
         $this->check_module_availability("module_message");
 
+        // Staff: new messenger UI (DM + groups). Clients keep classic inbox.
+        if ($this->login_user->user_type === "staff") {
+            $Chat_model = new \App\Models\Chat_model();
+            $auto_cleanup_days = (int) get_setting("user_" . $this->login_user->id . "_chat_auto_cleanup_days");
+            if (in_array($auto_cleanup_days, array(30, 60, 90, 180, 365), true)) {
+                $Chat_model->auto_cleanup_own_messages($this->login_user->id, $auto_cleanup_days);
+            }
+            $view_data['conversations'] = $Chat_model->get_inbox($this->login_user->id);
+            $view_data['staff_users'] = $Chat_model->get_staff_users($this->login_user->id);
+            $view_data['job_titles'] = $Chat_model->get_staff_job_titles($this->login_user->id);
+            $Team_model = model('App\Models\Team_model');
+            $view_data['staff_teams'] = $Team_model->get_details()->getResult();
+            $view_data['login_user'] = $this->login_user;
+            $view_data['open_conversation_id'] = is_numeric($auto_select_index) ? (int) $auto_select_index : 0;
+            $view_data['auto_cleanup_days'] = in_array($auto_cleanup_days, array(30, 60, 90, 180, 365), true) ? $auto_cleanup_days : 0;
+            return $this->template->rander("messages/messenger", $view_data);
+        }
+
         $view_data['mode'] = "inbox";
         $view_data['auto_select_index'] = clean_data($auto_select_index);
+        return $this->template->rander("messages/index", $view_data);
+    }
+
+    /* Classic RISE inbox (old subject-based threads) */
+    function classic($auto_select_index = "") {
+        $this->check_message_user_permission();
+        $this->check_module_availability("module_message");
+
+        $view_data['mode'] = "inbox";
+        $view_data['auto_select_index'] = clean_data($auto_select_index);
+        $view_data['show_back_to_messenger'] = true;
         return $this->template->rander("messages/index", $view_data);
     }
 
