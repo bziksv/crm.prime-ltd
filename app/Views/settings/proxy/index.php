@@ -23,10 +23,7 @@ foreach ($send_order as $item) {
 <div class="outbound-proxy-page">
     <div class="mb15">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
-            <div>
-                <h4 class="mb5"><?php echo app_lang('outbound_proxy_settings'); ?></h4>
-                <p class="text-off small mb0"><?php echo app_lang('outbound_proxy_lead'); ?></p>
-            </div>
+            <p class="text-off small mb0"><?php echo app_lang('outbound_proxy_lead'); ?></p>
             <?php echo js_anchor("<i data-feather='refresh-cw' class='icon-16'></i> " . app_lang('outbound_proxy_refresh'), array(
                 "class" => "btn btn-default btn-sm",
                 "id" => "outbound-proxy-refresh-btn",
