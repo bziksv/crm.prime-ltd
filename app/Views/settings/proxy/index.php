@@ -186,15 +186,20 @@ foreach ($send_order as $item) {
             $.ajax({
                 url: $btn.attr("data-action-url"),
                 type: 'POST',
+                timeout: 120000,
                 data: AppHelper.csrfHashName ? {[AppHelper.csrfHashName]: AppHelper.csrfHash} : {},
                 success: function (result) {
                     appLoader.hide();
                     if (result.success) {
                         appAlert.success(result.message);
-                        window.location.href = "<?php echo get_uri('settings/proxy'); ?>";
+                        location.reload();
                     } else {
                         appAlert.error(result.message);
                     }
+                },
+                error: function () {
+                    appLoader.hide();
+                    appAlert.error(AppLanugage.somethingWentWrong);
                 }
             });
             return false;
@@ -206,6 +211,7 @@ foreach ($send_order as $item) {
             $.ajax({
                 url: $btn.attr("data-action-url"),
                 type: 'POST',
+                timeout: 60000,
                 data: AppHelper.csrfHashName ? {[AppHelper.csrfHashName]: AppHelper.csrfHash} : {},
                 success: function (result) {
                     appLoader.hide();
@@ -214,6 +220,10 @@ foreach ($send_order as $item) {
                     } else {
                         appAlert.error(result.message);
                     }
+                },
+                error: function () {
+                    appLoader.hide();
+                    appAlert.error(AppLanugage.somethingWentWrong);
                 }
             });
             return false;

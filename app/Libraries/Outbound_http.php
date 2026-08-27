@@ -152,15 +152,21 @@ class Outbound_http {
     public static function buildSendAttempts($skipDirectIfProxies = true) {
         $proxiesModel = model(Outbound_proxies_model::class);
         $enabled = $proxiesModel->get_enabled();
+        $workingIds = self::getWorkingProxyIdsFromCache();
         $attempts = [];
 
         foreach (self::sendAttemptOrder() as $mode) {
             if ($mode === 'direct') {
-                $attempts[] = ['send_via' => 'direct', 'proxy' => null];
+                if (!$skipDirectIfProxies || $enabled === []) {
+                    $attempts[] = ['send_via' => 'direct', 'proxy' => null];
+                }
                 continue;
             }
             if (strpos($mode, 'proxy:') === 0) {
                 $id = (int) substr($mode, 6);
+                if (is_array($workingIds) && $workingIds !== [] && !in_array($id, $workingIds, true)) {
+                    continue;
+                }
                 $row = $proxiesModel->get_one($id);
                 if ($row && !(int) $row->deleted && (int) $row->enabled === 1 && $row->url) {
                     $attempts[] = ['send_via' => $mode, 'proxy' => $row->url];
@@ -169,25 +175,51 @@ class Outbound_http {
         }
 
         if ($attempts === []) {
-            $attempts[] = ['send_via' => 'direct', 'proxy' => null];
+            foreach ($enabled as $row) {
+                $attempts[] = ['send_via' => 'proxy:' . $row->id, 'proxy' => $row->url];
+            }
         }
 
-        if ($skipDirectIfProxies && $enabled !== []) {
-            $filtered = array_values(array_filter($attempts, static function ($a) {
-                return $a['send_via'] !== 'direct';
-            }));
-            if ($filtered !== []) {
-                $attempts = $filtered;
-            }
+        if ($attempts === []) {
+            $attempts[] = ['send_via' => 'direct', 'proxy' => null];
         }
 
         return $attempts;
     }
 
     /**
+     * Proxy ids that passed the last connectivity probe (skip slow/dead routes).
+     *
+     * @return array<int, int>|null null = no cache, use send order as-is
+     */
+    private static function getWorkingProxyIdsFromCache() {
+        $settings = model(Settings_model::class);
+        $cached = $settings->get_setting(self::STATUS_SETTING);
+        if (!$cached) {
+            return null;
+        }
+        $decoded = json_decode($cached, true);
+        if (!is_array($decoded) || empty($decoded['proxies'])) {
+            return null;
+        }
+
+        $ids = [];
+        foreach ($decoded['proxies'] as $row) {
+            if (empty($row['enabled'])) {
+                continue;
+            }
+            if (!empty($row['probe']['ok'])) {
+                $ids[] = (int) $row['id'];
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * @return array{ok:bool,body:string,http_code:int,curl_error:string,send_via:string,proxy_masked:string}
      */
-    public static function request($url, array $options = [], $timeout = 30) {
+    public static function request($url, array $options = [], $timeout = 12) {
         if (!function_exists('curl_init')) {
             return [
                 'ok' => false,
@@ -213,7 +245,7 @@ class Outbound_http {
             $curlOpts = [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => $timeout,
-                CURLOPT_CONNECTTIMEOUT => min(15, $timeout),
+                CURLOPT_CONNECTTIMEOUT => min(5, $timeout),
                 CURLOPT_NOSIGNAL => true,
             ];
 
@@ -263,7 +295,7 @@ class Outbound_http {
     /**
      * @return array{ok:bool,json:?object,error:string,send_via:string}
      */
-    public static function postJson($url, array $postFields, $timeout = 30) {
+    public static function postJson($url, array $postFields, $timeout = 12) {
         $result = self::request($url, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $postFields,

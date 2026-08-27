@@ -1651,7 +1651,7 @@ class Settings extends Security_Controller
         }
 
         Outbound_http::forgetSendOrderCache();
-        echo json_encode(array('success' => true, 'message' => app_lang('record_saved')));
+        echo json_encode(array('success' => true, 'message' => app_lang('record_saved'), 'reload_page' => true));
     }
 
     function delete_outbound_proxy() {
@@ -1691,12 +1691,29 @@ class Settings extends Security_Controller
         }
 
         $text = app_lang('outbound_proxy_test_message') . ' ' . format_to_datetime(get_current_utc_time());
-        $ok = function_exists('telegram_send') ? telegram_send($bot_token, $chat_id, $text) : false;
+        $result = Outbound_http::postJson(
+            "https://api.telegram.org/bot{$bot_token}/sendMessage",
+            [
+                'chat_id' => $chat_id,
+                'parse_mode' => 'HTML',
+                'text' => $text,
+                'disable_web_page_preview' => true,
+            ],
+            12
+        );
 
-        if ($ok) {
-            echo json_encode(array('success' => true, 'message' => app_lang('outbound_proxy_test_ok')));
+        if (!empty($result['ok'])) {
+            $via = $result['send_via'] === 'direct' ? app_lang('outbound_proxy_direct') : $result['send_via'];
+            echo json_encode(array(
+                'success' => true,
+                'message' => app_lang('outbound_proxy_test_ok') . ' (' . $via . ')',
+            ));
         } else {
-            echo json_encode(array('success' => false, 'message' => app_lang('outbound_proxy_test_fail')));
+            $detail = $result['error'] ?: app_lang('outbound_proxy_test_fail');
+            if (!empty($result['send_via'])) {
+                $detail .= ' [' . $result['send_via'] . ']';
+            }
+            echo json_encode(array('success' => false, 'message' => $detail));
         }
     }
 }

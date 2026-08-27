@@ -83,8 +83,14 @@
 <script type="text/javascript">
     $(document).ready(function () {
         $("#outbound-proxy-form").appForm({
-            onSuccess: function () {
-                window.location.href = "<?php echo get_uri('settings/proxy'); ?>";
+            closeModalOnSuccess: true,
+            onSuccess: function (result) {
+                if (result.message) {
+                    appAlert.success(result.message);
+                }
+                setTimeout(function () {
+                    location.reload();
+                }, 200);
             }
         });
     });
