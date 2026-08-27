@@ -138,8 +138,10 @@ class Notifications extends Security_Controller {
         // Group only when explicitly requested. Default is off so each unread
         // comment is a separate row (empty("0") previously treated "Да" as on).
         if ($this->should_group_notifications($options['grouped'])) {
-            $notifiations->result = array_values(
-                (new NotificationGrouper($notifiations->result))->get_grouped_unread_by_task()
+            $grouped = (new NotificationGrouper($notifiations->result))->get_grouped_unread_by_task();
+            $notifiations->result = $this->_sort_notification_groups(
+                array_values($grouped),
+                get_array_value($options, 'order_by')
             );
         }
 
@@ -177,6 +179,24 @@ class Notifications extends Security_Controller {
         }
 
         return $filters;
+    }
+
+    private function _sort_notification_groups(array $groups, $orderBy = 'DESC'): array
+    {
+        $asc = strtoupper((string) $orderBy) === 'ASC';
+
+        usort($groups, function ($a, $b) use ($asc) {
+            $aTs = strtotime($a->created_at ?? '') ?: 0;
+            $bTs = strtotime($b->created_at ?? '') ?: 0;
+
+            if ($aTs !== $bTs) {
+                return $asc ? ($aTs <=> $bTs) : ($bTs <=> $aTs);
+            }
+
+            return $asc ? ((int) $a->id <=> (int) $b->id) : ((int) $b->id <=> (int) $a->id);
+        });
+
+        return $groups;
     }
 
     function team_members_dropdown() {
