@@ -68,9 +68,9 @@ app_hooks()->add_action('app_hook_post_notification', function ($notification_id
 
     $enabled = get_telegram_notification_setting("enable_telegram");
     $bot_token = get_telegram_notification_setting("bot_token");
-    $chat_id = get_telegram_notification_setting("chat_id");
 
-    if ($enabled && $bot_token && $chat_id) {
+    // Заявки и задачи шлются на telegram_chat_id из профиля сотрудника, общий chat_id не обязателен.
+    if ($enabled && $bot_token) {
         $Telegram_Notifications_model = new \Telegram_Notification\Models\Telegram_Notifications_model();
         $Telegram_Notifications_model->create_notification($notification_id);
 
