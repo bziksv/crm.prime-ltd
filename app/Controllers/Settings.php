@@ -1687,7 +1687,8 @@ class Settings extends Security_Controller
             }
 
             $bot_token = function_exists('get_telegram_notification_setting') ? get_telegram_notification_setting('bot_token') : '';
-            $chat_id = $this->login_user->telegram_chat_id ?? '';
+            $user = $this->Users_model->get_one($this->login_user->id);
+            $chat_id = $user->telegram_chat_id ?? '';
 
             if (!$bot_token) {
                 $this->echo_json(array('success' => false, 'message' => app_lang('outbound_proxy_token_missing')));
