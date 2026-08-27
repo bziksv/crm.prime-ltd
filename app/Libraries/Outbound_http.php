@@ -72,14 +72,24 @@ class Outbound_http {
         curl_close($ch);
 
         $elapsed = (int) round((microtime(true) - $started) * 1000);
-        $ok = $httpCode >= 200 && $httpCode < 400 && $curlError === '';
 
         return [
-            'ok' => $ok,
+            'ok' => self::isProbeReachable(['http_code' => $httpCode, 'curl_error' => $curlError]),
             'http_code' => $httpCode,
             'curl_error' => $curlError,
             'elapsed_ms' => $elapsed,
         ];
+    }
+
+    private static function isProbeReachable(array $probe) {
+        if (!empty($probe['ok'])) {
+            return true;
+        }
+
+        $httpCode = (int) ($probe['http_code'] ?? 0);
+        $curlError = trim((string) ($probe['curl_error'] ?? ''));
+
+        return $curlError === '' && $httpCode >= 200 && $httpCode < 400;
     }
 
     public static function forgetSendOrderCache() {
@@ -147,9 +157,36 @@ class Outbound_http {
     }
 
     /**
+     * @param array<int, int> $workingProxyIds
+     * @return array<int, string>
+     */
+    public static function buildSendOrderFromProbeResults($directOk, array $workingProxyIds) {
+        if ($workingProxyIds === []) {
+            return ['direct'];
+        }
+
+        if (!$directOk) {
+            return array_map(static function ($id) {
+                return 'proxy:' . $id;
+            }, $workingProxyIds);
+        }
+
+        $order = ['direct'];
+        foreach ($workingProxyIds as $id) {
+            $order[] = 'proxy:' . $id;
+        }
+
+        return $order;
+    }
+
+    /**
      * @return array<int, array{send_via:string,proxy:?string}>
      */
-    public static function buildSendAttempts($skipDirectIfProxies = true) {
+    public static function buildSendAttempts($skipDirectIfProxies = true, $forceProxyOnly = null) {
+        if ($forceProxyOnly === null) {
+            $forceProxyOnly = self::isDirectKnownUnavailable();
+        }
+
         $proxiesModel = model(Outbound_proxies_model::class);
         $enabled = $proxiesModel->get_enabled();
         $workingIds = self::getWorkingProxyIdsFromCache();
@@ -157,6 +194,9 @@ class Outbound_http {
 
         foreach (self::sendAttemptOrder() as $mode) {
             if ($mode === 'direct') {
+                if ($forceProxyOnly) {
+                    continue;
+                }
                 if (!$skipDirectIfProxies || $enabled === []) {
                     $attempts[] = ['send_via' => 'direct', 'proxy' => null];
                 }
@@ -180,11 +220,24 @@ class Outbound_http {
             }
         }
 
-        if ($attempts === []) {
+        if ($attempts === [] && !$forceProxyOnly) {
             $attempts[] = ['send_via' => 'direct', 'proxy' => null];
         }
 
         return $attempts;
+    }
+
+    private static function isDirectKnownUnavailable() {
+        $settings = model(Settings_model::class);
+        $cached = $settings->get_setting(self::STATUS_SETTING);
+        if (!$cached) {
+            return false;
+        }
+
+        $decoded = json_decode($cached, true);
+        return is_array($decoded)
+            && !empty($decoded['probes_checked'])
+            && empty($decoded['direct']['ok']);
     }
 
     /**
@@ -208,7 +261,7 @@ class Outbound_http {
             if (empty($row['enabled'])) {
                 continue;
             }
-            if (!empty($row['probe']['ok'])) {
+            if (self::isProbeReachable($row['probe'] ?? [])) {
                 $ids[] = (int) $row['id'];
             }
         }
@@ -282,14 +335,12 @@ class Outbound_http {
     }
 
     private static function isSuccessfulResponse($httpCode, $body) {
-        if ($httpCode < 200 || $httpCode >= 300) {
-            return false;
-        }
         $json = json_decode($body, true);
         if (is_array($json) && array_key_exists('ok', $json)) {
             return !empty($json['ok']);
         }
-        return true;
+
+        return $httpCode >= 200 && $httpCode < 300;
     }
 
     /**
@@ -298,14 +349,22 @@ class Outbound_http {
     public static function postJson($url, array $postFields, $timeout = 12) {
         $result = self::request($url, [
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $postFields,
+            CURLOPT_POSTFIELDS => http_build_query($postFields),
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/x-www-form-urlencoded',
+            ],
         ], $timeout);
 
         if (!$result['ok']) {
+            $error = trim($result['curl_error'] ?: ('HTTP ' . $result['http_code']));
+            if ($error === 'HTTP 0') {
+                $error = 'Request failed';
+            }
+
             return [
                 'ok' => false,
                 'json' => null,
-                'error' => $result['curl_error'] ?: ('HTTP ' . $result['http_code']),
+                'error' => $error,
                 'send_via' => $result['send_via'],
             ];
         }
@@ -337,11 +396,17 @@ class Outbound_http {
         }
 
         $proxiesModel = model(Outbound_proxies_model::class);
+        $direct = self::probe(self::PROBE_URL, null, 6);
+        $directOk = !empty($direct['ok']);
+
         $rows = [];
+        $probeById = [];
         foreach ($proxiesModel->get_all_active() as $row) {
-            $probe = self::probe(self::PROBE_URL, $row->url, 12);
+            $probe = self::probe(self::PROBE_URL, $row->url, 8);
+            $id = (int) $row->id;
+            $probeById[$id] = $probe;
             $rows[] = [
-                'id' => (int) $row->id,
+                'id' => $id,
                 'label' => $row->label,
                 'supplier' => $row->supplier,
                 'url' => $row->url,
@@ -352,7 +417,17 @@ class Outbound_http {
             ];
         }
 
-        $direct = self::probe(self::PROBE_URL, null, 8);
+        $workingProxyIds = [];
+        foreach ($proxiesModel->get_enabled() as $row) {
+            $id = (int) $row->id;
+            if (!empty($probeById[$id]) && self::isProbeReachable($probeById[$id])) {
+                $workingProxyIds[] = $id;
+            }
+        }
+
+        $sendOrder = self::buildSendOrderFromProbeResults($directOk, $workingProxyIds);
+        $settings->save_setting(self::SEND_ORDER_SETTING, json_encode($sendOrder));
+
         $enabledCount = count($proxiesModel->get_enabled());
         $tokenConfigured = false;
         if (function_exists('get_telegram_notification_setting')) {
@@ -364,7 +439,7 @@ class Outbound_http {
             'probes_checked' => true,
             'direct' => $direct,
             'proxies' => $rows,
-            'send_order' => self::sendAttemptOrder(true),
+            'send_order' => $sendOrder,
             'proxy_count' => $enabledCount,
             'token_configured' => $tokenConfigured,
         ];

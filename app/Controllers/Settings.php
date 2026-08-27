@@ -1668,53 +1668,72 @@ class Settings extends Security_Controller
     }
 
     function refresh_outbound_proxy() {
-        Outbound_http::connectivityStatus(true);
-        echo json_encode(array('success' => true, 'message' => app_lang('outbound_proxy_refreshed')));
+        try {
+            @set_time_limit(120);
+            Outbound_http::connectivityStatus(true);
+            $this->echo_json(array('success' => true, 'message' => app_lang('outbound_proxy_refreshed')));
+        } catch (\Throwable $e) {
+            log_message('error', 'refresh_outbound_proxy: ' . $e->getMessage());
+            $this->echo_json(array('success' => false, 'message' => app_lang('error_occurred')));
+        }
     }
 
     function test_outbound_telegram() {
-        if (is_file(PLUGINPATH . "Telegram_Notification/Helpers/telegram_notification_general_helper.php")) {
-            helper('telegram_notification_general');
-        }
+        try {
+            @set_time_limit(120);
 
-        $bot_token = function_exists('get_telegram_notification_setting') ? get_telegram_notification_setting('bot_token') : '';
-        $chat_id = $this->login_user->telegram_chat_id;
+            if (is_file(PLUGINPATH . "Telegram_Notification/Helpers/telegram_notification_general_helper.php")) {
+                helper('telegram_notification_general');
+            }
 
-        if (!$bot_token) {
-            echo json_encode(array('success' => false, 'message' => app_lang('outbound_proxy_token_missing')));
-            return;
-        }
+            $bot_token = function_exists('get_telegram_notification_setting') ? get_telegram_notification_setting('bot_token') : '';
+            $chat_id = $this->login_user->telegram_chat_id ?? '';
 
-        if (!$chat_id) {
-            echo json_encode(array('success' => false, 'message' => app_lang('outbound_proxy_chat_missing')));
-            return;
-        }
+            if (!$bot_token) {
+                $this->echo_json(array('success' => false, 'message' => app_lang('outbound_proxy_token_missing')));
+                return;
+            }
 
-        $text = app_lang('outbound_proxy_test_message') . ' ' . format_to_datetime(get_current_utc_time());
-        $result = Outbound_http::postJson(
-            "https://api.telegram.org/bot{$bot_token}/sendMessage",
-            [
-                'chat_id' => $chat_id,
-                'parse_mode' => 'HTML',
-                'text' => $text,
-                'disable_web_page_preview' => true,
-            ],
-            12
-        );
+            if (!$chat_id) {
+                $this->echo_json(array('success' => false, 'message' => app_lang('outbound_proxy_chat_missing')));
+                return;
+            }
 
-        if (!empty($result['ok'])) {
-            $via = $result['send_via'] === 'direct' ? app_lang('outbound_proxy_direct') : $result['send_via'];
-            echo json_encode(array(
-                'success' => true,
-                'message' => app_lang('outbound_proxy_test_ok') . ' (' . $via . ')',
-            ));
-        } else {
+            $text = app_lang('outbound_proxy_test_message') . ' ' . format_to_datetime(get_current_utc_time());
+            $result = Outbound_http::postJson(
+                "https://api.telegram.org/bot{$bot_token}/sendMessage",
+                [
+                    'chat_id' => $chat_id,
+                    'parse_mode' => 'HTML',
+                    'text' => $text,
+                    'disable_web_page_preview' => true,
+                ],
+                15
+            );
+
+            if (!empty($result['ok'])) {
+                $via = $result['send_via'] === 'direct' ? app_lang('outbound_proxy_direct') : $result['send_via'];
+                $this->echo_json(array(
+                    'success' => true,
+                    'message' => app_lang('outbound_proxy_test_ok') . ' (' . $via . ')',
+                ));
+                return;
+            }
+
             $detail = $result['error'] ?: app_lang('outbound_proxy_test_fail');
             if (!empty($result['send_via'])) {
                 $detail .= ' [' . $result['send_via'] . ']';
             }
-            echo json_encode(array('success' => false, 'message' => $detail));
+            $this->echo_json(array('success' => false, 'message' => $detail));
+        } catch (\Throwable $e) {
+            log_message('error', 'test_outbound_telegram: ' . $e->getMessage());
+            $this->echo_json(array('success' => false, 'message' => app_lang('error_occurred')));
         }
+    }
+
+    private function echo_json($data) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 }
 

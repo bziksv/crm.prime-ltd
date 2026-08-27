@@ -172,6 +172,21 @@ foreach ($send_order as $item) {
         window.location.href = "<?php echo get_uri('settings/proxy'); ?>";
     };
 
+    function parseOutboundProxyAjaxResult(result) {
+        if (typeof result === 'string') {
+            try {
+                return JSON.parse(result);
+            } catch (e) {
+                return null;
+            }
+        }
+        return result;
+    }
+
+    function outboundProxyAjaxMessage(result, fallback) {
+        return (result && result.message) ? result.message : fallback;
+    }
+
     $(document).ready(function () {
         if (typeof feather !== 'undefined') {
             feather.replace();
@@ -183,20 +198,24 @@ foreach ($send_order as $item) {
             $.ajax({
                 url: $btn.attr("data-action-url"),
                 type: 'POST',
+                dataType: 'json',
                 timeout: 120000,
                 data: AppHelper.csrfHashName ? {[AppHelper.csrfHashName]: AppHelper.csrfHash} : {},
                 success: function (result) {
-                    appLoader.hide();
-                    if (result.success) {
-                        appAlert.success(result.message);
+                    result = parseOutboundProxyAjaxResult(result);
+                    if (result && result.success) {
+                        appAlert.success(outboundProxyAjaxMessage(result, AppLanugage.saved));
                         location.reload();
                     } else {
-                        appAlert.error(result.message);
+                        appAlert.error(outboundProxyAjaxMessage(result, AppLanugage.somethingWentWrong));
                     }
                 },
-                error: function () {
+                error: function (xhr) {
+                    var result = parseOutboundProxyAjaxResult(xhr.responseText);
+                    appAlert.error(outboundProxyAjaxMessage(result, AppLanugage.somethingWentWrong));
+                },
+                complete: function () {
                     appLoader.hide();
-                    appAlert.error(AppLanugage.somethingWentWrong);
                 }
             });
             return false;
@@ -208,19 +227,23 @@ foreach ($send_order as $item) {
             $.ajax({
                 url: $btn.attr("data-action-url"),
                 type: 'POST',
-                timeout: 60000,
+                dataType: 'json',
+                timeout: 90000,
                 data: AppHelper.csrfHashName ? {[AppHelper.csrfHashName]: AppHelper.csrfHash} : {},
                 success: function (result) {
-                    appLoader.hide();
-                    if (result.success) {
-                        appAlert.success(result.message);
+                    result = parseOutboundProxyAjaxResult(result);
+                    if (result && result.success) {
+                        appAlert.success(outboundProxyAjaxMessage(result, AppLanugage.saved));
                     } else {
-                        appAlert.error(result.message);
+                        appAlert.error(outboundProxyAjaxMessage(result, AppLanugage.somethingWentWrong));
                     }
                 },
-                error: function () {
+                error: function (xhr) {
+                    var result = parseOutboundProxyAjaxResult(xhr.responseText);
+                    appAlert.error(outboundProxyAjaxMessage(result, AppLanugage.somethingWentWrong));
+                },
+                complete: function () {
                     appLoader.hide();
-                    appAlert.error(AppLanugage.somethingWentWrong);
                 }
             });
             return false;
