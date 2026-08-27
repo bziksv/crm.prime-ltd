@@ -123,13 +123,14 @@ class Notifications extends Security_Controller {
     }
 
     private function _prepare_notification_list($offset = 0) {
+        $filters = $this->_get_notification_filters();
         $options = [
-            "event" => $this->request->getGet('notification_event_filter'),
-            "is_read" => $this->request->getGet('notification_is_read_filter'),
-            "grouped" => $this->request->getGet('notification_grouped_filter'),
-            "team_member" => $this->request->getGet('notification_team_members_filter'),
-            "project_id" => $this->request->getGet('notification_projects_filter'),
-            "order_by" => $this->request->getGet('notification_order_by_filter'),
+            "event" => get_array_value($filters, 'notification_event_filter'),
+            "is_read" => get_array_value($filters, 'notification_is_read_filter'),
+            "grouped" => get_array_value($filters, 'notification_grouped_filter'),
+            "team_member" => get_array_value($filters, 'notification_team_members_filter'),
+            "project_id" => get_array_value($filters, 'notification_projects_filter'),
+            "order_by" => get_array_value($filters, 'notification_order_by_filter'),
         ];
 
         $notifiations = $this->Notifications_model->get_notifications($this->login_user->id, $offset, 100, $options);
@@ -144,10 +145,38 @@ class Notifications extends Security_Controller {
 
         $view_data['notifications'] = $notifiations->result;
         $view_data['found_rows'] = $notifiations->found_rows;
+        $view_data['notification_filter_query'] = http_build_query($filters);
         $next_page_offset = $offset + 100;
         $view_data['next_page_offset'] = $next_page_offset;
         $view_data['result_remaining'] = $notifiations->found_rows > $next_page_offset;
         return $view_data;
+    }
+
+    /**
+     * Keep filter params on "load more" requests (ajax POST with query string).
+     */
+    private function _get_notification_filters(): array {
+        $names = [
+            'notification_event_filter',
+            'notification_is_read_filter',
+            'notification_team_members_filter',
+            'notification_projects_filter',
+            'notification_grouped_filter',
+            'notification_order_by_filter',
+        ];
+
+        $filters = [];
+        foreach ($names as $name) {
+            $value = $this->request->getGet($name);
+            if ($value === null || $value === '') {
+                $value = $this->request->getPost($name);
+            }
+            if ($value !== null && $value !== '') {
+                $filters[$name] = $value;
+            }
+        }
+
+        return $filters;
     }
 
     function team_members_dropdown() {

@@ -661,7 +661,7 @@ class Left_menu {
     private function _get_item_array_value($data_array, $left_menu_items) {
         $name = get_array_value($data_array, "name");
         $language_key = get_array_value($data_array, "language_key");
-        $url = get_array_value($data_array, "url");
+        $url = $this->_normalize_custom_menu_url(get_array_value($data_array, "url"));
         $icon = get_array_value($data_array, "icon");
         $open_in_new_tab = get_array_value($data_array, "open_in_new_tab");
         $item_value_array = array();
@@ -673,6 +673,22 @@ class Left_menu {
         }
 
         return $item_value_array;
+    }
+
+    /**
+     * Custom menu items from prod DB may store absolute crm.prime-ltd.su URLs.
+     */
+    private function _normalize_custom_menu_url($url) {
+        $url = trim((string) $url);
+        if ($url === '' || ENVIRONMENT !== 'development') {
+            return $url;
+        }
+
+        if (preg_match('#^https?://crm\.prime-ltd\.su(?:/index\.php)?/(.+)$#i', $url, $matches)) {
+            return get_uri($matches[1]);
+        }
+
+        return $url;
     }
 
     //position items for plugins

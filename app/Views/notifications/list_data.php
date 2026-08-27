@@ -129,7 +129,11 @@ if (count($notifications)) {
         <div id="loader-<?php echo $next_container_id; ?>" >
             <div class="text-center p20 clearfix margin-top-5">
                 <?php
-                echo ajax_anchor(get_uri("notifications/load_more/" . $next_page_offset), app_lang("load_more"), array("class" => "btn btn-default load-more mt15 p10 spinning-btn pr0", "data-remove-on-success" => "#loader-" . $next_container_id, "title" => app_lang("load_more"), "data-inline-loader" => "1", "data-real-target" => "#" . $next_container_id));
+                $load_more_url = get_uri("notifications/load_more/" . $next_page_offset);
+                if (!empty($notification_filter_query)) {
+                    $load_more_url .= '?' . $notification_filter_query;
+                }
+                echo ajax_anchor($load_more_url, app_lang("load_more"), array("class" => "btn btn-default load-more mt15 p10 spinning-btn pr0", "data-remove-on-success" => "#loader-" . $next_container_id, "title" => app_lang("load_more"), "data-inline-loader" => "1", "data-real-target" => "#" . $next_container_id));
                 ?>
             </div>
         </div>
