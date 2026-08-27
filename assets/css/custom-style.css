@@ -3194,3 +3194,16 @@ a.pm-file-row-main:hover .pm-file-name {
         max-width: 300px;
     }
 }
+
+.outbound-proxy-page .card-header {
+    padding: 12px 15px;
+}
+
+.outbound-proxy-page code {
+    font-size: 11px;
+    word-break: break-all;
+}
+
+.outbound-proxy-page .table td {
+    vertical-align: middle;
+}

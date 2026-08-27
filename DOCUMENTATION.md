@@ -132,7 +132,13 @@ gunzip -c db/crm_prime_lt-YYYYMMDD.sql.gz | mysql -u root crm_prime_lt
 ```bash
 cd /path/to/crm.prime-ltd
 
-# остановить предыдущий инстанс на порту
+# Быстрый старт (рекомендуется)
+./start-local.sh start    # поднимает через launchd, переживает закрытие терминала
+./start-local.sh status   # проверка
+./start-local.sh stop     # остановка
+
+# ручной запуск (если нужен)
+pkill -f "php -S 127.0.0.1:8787" 2>/dev/null || true
 pkill -f "php -S 127.0.0.1:8099" 2>/dev/null || true
 
 # низкий memory_limit, без opcache — меньше RSS на Mac
@@ -142,17 +148,17 @@ php \
   -d opcache.enable_cli=0 \
   -d realpath_cache_size=16K \
   -d realpath_cache_ttl=60 \
-  -S 127.0.0.1:8099 router.php
+  -S 127.0.0.1:8787 router.php
 ```
 
 | | |
 |--|--|
-| URL | http://127.0.0.1:8099/ → `/index.php/signin` |
+| URL | http://127.0.0.1:8787/ → `/index.php/signin` |
 | Ожидаемый RSS | ~25–40 МБ (один процесс PHP) |
-| Порт | `8099` (если занят — сменить в команде) |
+| Порт | `8787` (8099 часто занят nginx/другими сайтами) |
 | БД | `217.28.220.186:3306` (удалённая) |
 
-Остановка PHP: `pkill -f "php -S 127.0.0.1:8099"`.
+Остановка: `./start-local.sh stop` или `pkill -f "php -S 127.0.0.1:8787"`.
 
 Альтернатива: vhost / OpenServer / Docker с document root на `.` — те же `.env` и БД.
 

@@ -4,7 +4,7 @@ if (!function_exists('telegram_write_log')) {
 
     function telegram_write_log($data)
     {
-        $log_file = '/var/www/crm_prime_lt_usr/data/www/crm2.prime-ltd.su/mylog.txt';
+        $log_file = '/var/www/crm_prime_lt_usr/data/www/crm.prime-ltd.su/mylog.txt';
 
         $date = date('Y-m-d H:i:s');
 

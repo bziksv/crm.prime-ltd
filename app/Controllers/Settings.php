@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Libraries\Imap;
 use App\Libraries\Stripe;
+use App\Libraries\Outbound_http;
 use App\Controllers\App_Controller;
 
 class Settings extends Security_Controller
@@ -1588,6 +1589,114 @@ class Settings extends Security_Controller
                 echo json_encode(array("success" => false, 'message' => $ex->getMessage()));
                 return false;
             }
+        }
+    }
+
+    function proxy() {
+        if (is_file(PLUGINPATH . "Telegram_Notification/Helpers/telegram_notification_general_helper.php")) {
+            helper('telegram_notification_general');
+        }
+
+        $view_data['status'] = Outbound_http::connectivityStatus(false);
+        return $this->template->rander("settings/proxy_page", $view_data);
+    }
+
+    function outbound_proxy_modal_form() {
+        $id = $this->request->getPost('id');
+        $model = model(\App\Models\Outbound_proxies_model::class);
+        $model_info = $id ? $model->get_one($id) : $model->get_one(0);
+        if (!$model_info->priority && $model_info->priority !== '0') {
+            $model_info->priority = 50;
+        }
+        if (!$id) {
+            $model_info->enabled = 1;
+        }
+        $view_data['model_info'] = $model_info;
+        return $this->template->view('settings/proxy/modal_form', $view_data);
+    }
+
+    function save_outbound_proxy() {
+        $id = (int) $this->request->getPost('id');
+        $label = trim($this->request->getPost('label'));
+        $supplier = trim($this->request->getPost('supplier'));
+        $url = trim($this->request->getPost('url'));
+        $priority = (int) $this->request->getPost('priority');
+        $enabled = $this->request->getPost('enabled') ? 1 : 0;
+
+        if (!$label || !$url) {
+            echo json_encode(array('success' => false, 'message' => app_lang('field_required')));
+            return;
+        }
+
+        if (!Outbound_http::isValidProxyUrl($url)) {
+            echo json_encode(array('success' => false, 'message' => app_lang('outbound_proxy_invalid_url')));
+            return;
+        }
+
+        $model = model(\App\Models\Outbound_proxies_model::class);
+        $data = array(
+            'label' => $label,
+            'supplier' => $supplier ?: null,
+            'url' => $url,
+            'priority' => $priority,
+            'enabled' => $enabled,
+            'updated_at' => get_current_utc_time(),
+        );
+
+        if ($id) {
+            $model->ci_save($data, $id);
+        } else {
+            $data['created_at'] = get_current_utc_time();
+            $model->ci_save($data);
+        }
+
+        Outbound_http::forgetSendOrderCache();
+        echo json_encode(array('success' => true, 'message' => app_lang('record_saved')));
+    }
+
+    function delete_outbound_proxy() {
+        $id = (int) $this->request->getPost('id');
+        if (!$id) {
+            echo json_encode(array('success' => false, 'message' => app_lang('error_occurred')));
+            return;
+        }
+
+        $model = model(\App\Models\Outbound_proxies_model::class);
+        $model->delete($id);
+        Outbound_http::forgetSendOrderCache();
+        echo json_encode(array('success' => true, 'message' => app_lang('record_deleted')));
+    }
+
+    function refresh_outbound_proxy() {
+        Outbound_http::connectivityStatus(true);
+        echo json_encode(array('success' => true, 'message' => app_lang('outbound_proxy_refreshed')));
+    }
+
+    function test_outbound_telegram() {
+        if (is_file(PLUGINPATH . "Telegram_Notification/Helpers/telegram_notification_general_helper.php")) {
+            helper('telegram_notification_general');
+        }
+
+        $bot_token = function_exists('get_telegram_notification_setting') ? get_telegram_notification_setting('bot_token') : '';
+        $chat_id = $this->login_user->telegram_chat_id;
+
+        if (!$bot_token) {
+            echo json_encode(array('success' => false, 'message' => app_lang('outbound_proxy_token_missing')));
+            return;
+        }
+
+        if (!$chat_id) {
+            echo json_encode(array('success' => false, 'message' => app_lang('outbound_proxy_chat_missing')));
+            return;
+        }
+
+        $text = app_lang('outbound_proxy_test_message') . ' ' . format_to_datetime(get_current_utc_time());
+        $ok = function_exists('telegram_send') ? telegram_send($bot_token, $chat_id, $text) : false;
+
+        if ($ok) {
+            echo json_encode(array('success' => true, 'message' => app_lang('outbound_proxy_test_ok')));
+        } else {
+            echo json_encode(array('success' => false, 'message' => app_lang('outbound_proxy_test_fail')));
         }
     }
 }

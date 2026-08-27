@@ -319,18 +319,13 @@ function telegram_send($bot_token, $chat_id, $text)
         "disable_web_page_preview" => true
     ];
 
-    $ch = curl_init("https://api.telegram.org/bot{$bot_token}/sendMessage");
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $result = \App\Libraries\Outbound_http::postJson(
+        "https://api.telegram.org/bot{$bot_token}/sendMessage",
+        $data,
+        30
+    );
 
-    $result = curl_exec($ch);
-    curl_close($ch);
-
-    if (!$result) return false;
-
-    $decoded = json_decode($result);
-    return isset($decoded->ok) && $decoded->ok;
+    return $result['ok'];
 }
 
 /**
@@ -548,9 +543,11 @@ if (!function_exists('send_telegram_notification')) {
                 foreach($notifyTo as $uid) {
                     $user = $ci->Users_model->get_one($uid);
 
-                    if(isset($user->telegram_chat_id)) {
+                    if (!empty($user->telegram_chat_id)) {
                         try {
-                            telegram_send(get_telegram_notification_setting("bot_token"), $user->telegram_chat_id, $message);
+                            if (!telegram_send(get_telegram_notification_setting("bot_token"), $user->telegram_chat_id, $message)) {
+                                write_log("Telegram ticket send failed for user {$user->id} ({$user->email}) event {$notification_info->event}");
+                            }
                         } catch (\Exception $ex) {
                             write_log($ex->getMessage());
                         }
@@ -743,28 +740,19 @@ if (!function_exists('send_telegram_notification')) {
 
         $postFields = "payload=" . $payload;
 
-        $ch = curl_init($url);
-
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
+        $result = \App\Libraries\Outbound_http::request($url, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $postFields,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/x-www-form-urlencoded'
             ],
-        ]);
+        ], 30);
 
-        $response = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            $error = curl_error($ch);
-            curl_close($ch);
-            return "cURL error: " . $error;
+        if (!$result['ok']) {
+            return "cURL error: " . ($result['curl_error'] ?: ('HTTP ' . $result['http_code']));
         }
 
-        curl_close($ch);
-
-        return $response;
+        return $result['body'];
     }
 
     function formatMessage($text) {

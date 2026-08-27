@@ -9,6 +9,7 @@ $settings_menu = array(
         array("name" => "left_menu", "url" => "left_menus"),
         array("name" => "notifications", "url" => "settings/notifications"),
         array("name" => "integration", "url" => "settings/integration"),
+        array("name" => "outbound_proxy", "url" => "settings/proxy"),
         array("name" => "cron_job", "url" => "settings/cron_job"),
         array("name" => "updates", "url" => "Updates"),
     ),
