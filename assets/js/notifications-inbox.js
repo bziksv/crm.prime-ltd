@@ -366,10 +366,16 @@
         if (typeof html !== "string" || !html) {
             return false;
         }
-        return /<html[\s>]/i.test(html)
-            || /id=["']left-menu-toggle-mask["']/i.test(html)
-            || /name=["']email["'][^>]*signin|signin.*name=["']email["']/i.test(html)
-            || /Войти в систему/i.test(html);
+
+        // Valid embedded panels — never treat as a full app shell
+        if (/task-panel-view|ticket-panel-view|notification-panel-view/.test(html)) {
+            return false;
+        }
+
+        var head = html.slice(0, 800).toLowerCase();
+        return head.indexOf("<!doctype html") !== -1
+            || /<html[\s>]/i.test(head)
+            || head.indexOf("left-menu-toggle-mask") !== -1;
     }
 
     function showPanelLoadError(notificationId) {
