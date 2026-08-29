@@ -10,6 +10,7 @@ body:has(.tickets-list-page) #left-menu-toggle-mask {
     overflow: visible !important;
     height: 100vh !important;
     max-height: 100vh !important;
+    display: flow-root;
 }
 
 body:has(.tickets-list-page) .sidebar .sidebar-scroll {

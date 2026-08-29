@@ -75,23 +75,41 @@
         return '<div class="notifications-inbox-avatar" data-hue="' + avatarHue(initial) + '">' + $("<div>").text(initial).html() + "</div>";
     }
 
+    function escapeHtml(text) {
+        return $("<div>").text(text || "").html();
+    }
+
+    function linkifyPreview(text) {
+        var escaped = escapeHtml(text);
+        if (!escaped) {
+            return "";
+        }
+
+        return escaped.replace(/(https?:\/\/[^\s<]+)/g, function (url) {
+            var clean = url.replace(/[.,;:!?)]+$/g, "");
+            var trailing = url.slice(clean.length);
+            return '<a href="' + clean + '" class="notifications-inbox-preview-link" target="_blank" rel="noopener noreferrer">' + clean + "</a>" + trailing;
+        });
+    }
+
     function buildItemHtml(item) {
         var unreadClass = item.is_unread ? " is-unread" : "";
+        var count = parseInt(item.group_count, 10) || 1;
         var badge = item.is_unread
-            ? '<span class="notifications-inbox-badge">' + (item.group_count > 1 ? item.group_count : "!") + "</span>"
+            ? '<span class="notifications-inbox-badge">' + count + "</span>"
             : "";
-        var title = $("<div>").text(item.actor_name || "").html();
-        var eventLabel = $("<div>").text(item.event_label || "").html();
-        var entity = $("<div>").text(item.entity_title || "").html();
-        var preview = $("<div>").text(item.preview || "").html();
-        var project = $("<div>").text(item.project_title || "").html();
+        var title = escapeHtml(item.actor_name || "");
+        var eventLabel = escapeHtml(item.event_label || "");
+        var entity = escapeHtml(item.entity_title || "");
+        var preview = linkifyPreview(item.preview || "");
+        var project = escapeHtml(item.project_title || "");
 
         var entityHtml = entity ? '<div class="notifications-inbox-entity">' + entity + "</div>" : "";
         var projectHtml = project && project !== entity ? '<div class="notifications-inbox-entity">' + project + "</div>" : "";
         var previewHtml = preview ? '<div class="notifications-inbox-item-preview">' + preview + "</div>" : "";
 
         return (
-            '<button type="button" class="notifications-inbox-item js-notification-inbox-item' + unreadClass + '" data-id="' + item.id + '" data-ticket-id="' + (item.ticket_id || "") + '" data-task-id="' + (item.task_id || "") + '" data-date-group="' + getDateGroupLabel(item.created_at) + '">' +
+            '<div role="button" tabindex="0" class="notifications-inbox-item js-notification-inbox-item' + unreadClass + '" data-id="' + item.id + '" data-ticket-id="' + (item.ticket_id || "") + '" data-task-id="' + (item.task_id || "") + '" data-date-group="' + getDateGroupLabel(item.created_at) + '">' +
                 buildAvatar(item) +
                 '<div class="notifications-inbox-item-body">' +
                     '<div class="notifications-inbox-item-top">' +
@@ -103,7 +121,7 @@
                     projectHtml +
                     previewHtml +
                 "</div>" +
-            "</button>"
+            "</div>"
         );
     }
 
@@ -283,7 +301,7 @@
         var $item = $(".js-notification-inbox-item[data-id='" + notificationId + "']");
         $item.addClass("is-unread");
         if (!$item.find(".notifications-inbox-badge").length) {
-            $item.find(".notifications-inbox-item-meta").prepend('<span class="notifications-inbox-badge">!</span>');
+            $item.find(".notifications-inbox-item-meta").prepend('<span class="notifications-inbox-badge">1</span>');
         }
     }
 
@@ -444,8 +462,26 @@
 
     function bindEvents() {
         $(document).on("click", ".js-notification-inbox-item", function (event) {
+            if ($(event.target).closest("a").length) {
+                return;
+            }
             event.preventDefault();
             openNotification($(this).attr("data-id"), $(this).attr("data-ticket-id"), $(this).attr("data-task-id"));
+        });
+
+        $(document).on("keydown", ".js-notification-inbox-item", function (event) {
+            if (event.key !== "Enter" && event.key !== " ") {
+                return;
+            }
+            if ($(event.target).closest("a").length) {
+                return;
+            }
+            event.preventDefault();
+            openNotification($(this).attr("data-id"), $(this).attr("data-ticket-id"), $(this).attr("data-task-id"));
+        });
+
+        $(document).on("click", ".notifications-inbox-preview-link", function (event) {
+            event.stopPropagation();
         });
 
         $(document).on("click", ".js-notifications-load-more", function () {

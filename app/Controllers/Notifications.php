@@ -491,11 +491,29 @@ class Notifications extends Security_Controller {
             $preview = $notification->posts_title;
         }
 
-        $preview = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags((string) $preview), ENT_QUOTES | ENT_HTML5, "UTF-8")));
-        if (function_exists("mb_strlen") && mb_strlen($preview) > 120) {
-            $preview = mb_substr($preview, 0, 117) . "...";
-        } else if (strlen($preview) > 120) {
-            $preview = substr($preview, 0, 117) . "...";
+        $preview_html = (string) $preview;
+        // Keep word breaks when tags are stripped (</p><a>, <br>, etc.)
+        $preview_html = preg_replace('/<\s*(br|p|div|li|tr|h[1-6])\b[^>]*>/i', ' ', $preview_html);
+        $preview_html = preg_replace('/<\/\s*(p|div|li|tr|h[1-6]|a)\s*>/i', ' ', $preview_html);
+        $preview_html = preg_replace('/<\s*a\b[^>]*>/i', ' ', $preview_html);
+        $preview = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($preview_html), ENT_QUOTES | ENT_HTML5, "UTF-8")));
+        // Space before glued URLs: "группыhttps://"
+        $preview = preg_replace('/([^\s\/])(https?:\/\/)/u', '$1 $2', $preview);
+        if (function_exists("mb_convert_encoding")) {
+            $preview = mb_convert_encoding($preview, "UTF-8", "UTF-8");
+        }
+        // Drop broken chars (�) that appear after mid-byte cuts / bad encodings
+        $preview = preg_replace('/\x{FFFD}/u', '', $preview);
+        $preview = trim((string) $preview);
+
+        $max_preview = 520;
+        if (function_exists("mb_strlen") && mb_strlen($preview, "UTF-8") > $max_preview) {
+            $preview = rtrim(mb_substr($preview, 0, $max_preview - 1, "UTF-8"), " \t.,;:!-") . "…";
+        } else if (strlen($preview) > $max_preview) {
+            $cut = substr($preview, 0, $max_preview - 1);
+            // Avoid cutting inside a UTF-8 multibyte sequence
+            $cut = preg_replace('/[\xC0-\xFF][\x80-\xBF]*$/u', '', $cut);
+            $preview = rtrim($cut, " \t.,;:!-") . "…";
         }
 
         $notification_ids = array((int) $notification->id);
