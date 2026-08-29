@@ -83,11 +83,18 @@ class Notifications extends Security_Controller {
         }
 
         $found_rows = (int) $notifications->found_rows;
+
+        // Counts always for unread (independent of active tab), same filters otherwise
+        $stats_options = $options;
+        $stats = $this->Notifications_model->count_unread_inbox_stats($this->login_user->id, $stats_options);
+
         echo json_encode(array(
             "success" => true,
             "data" => $items,
             "recordsTotal" => $found_rows,
             "hasMore" => ($skip + count($items)) < $found_rows,
+            "unread_total" => (int) get_array_value($stats, "unread_total"),
+            "unread_unique" => (int) get_array_value($stats, "unread_unique"),
         ), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 

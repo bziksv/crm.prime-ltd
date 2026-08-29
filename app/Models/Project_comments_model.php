@@ -133,6 +133,13 @@ class Project_comments_model extends Crud_model {
         WHERE $project_comments_table.deleted=0 $where
         ORDER BY $project_comments_table.created_at $sort";
 
+        $limit = (int) get_array_value($options, "limit");
+        $offset = (int) get_array_value($options, "offset");
+        if ($limit > 0) {
+            $offset = max(0, $offset);
+            $sql .= " LIMIT $offset, $limit";
+        }
+
         return $this->db->query($sql);
     }
 

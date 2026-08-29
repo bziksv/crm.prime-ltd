@@ -1771,7 +1771,18 @@ class Tasks extends Security_Controller {
         $view_data['private_labels'] = make_labels_view_data($model_info->private_labels_list);
 
         $options = array("task_id" => $task_id, "login_user_id" => $this->login_user->id);
-        $view_data['comments'] = $this->Project_comments_model->get_details($options)->getResult();
+        $comment_page_size = 50;
+        $options["limit"] = $comment_page_size + 1;
+        $options["offset"] = 0;
+        $comments = $this->Project_comments_model->get_details($options)->getResult();
+        $comments_has_more = count($comments) > $comment_page_size;
+        if ($comments_has_more) {
+            array_pop($comments);
+        }
+        $view_data['comments'] = $comments;
+        $view_data['comments_has_more'] = $comments_has_more;
+        $view_data['comments_next_offset'] = count($comments);
+        $view_data['comments_page_size'] = $comment_page_size;
         $view_data['task_id'] = $task_id;
 
         $view_data['personal_note'] = $this->Task_personal_notes_models->get_one_where(["created_by" => $this->login_user->id, "task_id" => $task_id]);
@@ -4120,6 +4131,46 @@ class Tasks extends Security_Controller {
         }
 
         echo json_encode($suggestion);
+    }
+
+    /* load older task comments (newest-first pages) */
+    function load_more_comments($task_id = 0, $offset = 0) {
+        validate_numeric_value($task_id);
+        validate_numeric_value($offset);
+
+        $task_info = $this->Tasks_model->get_one($task_id);
+        if (!$task_info || !$task_info->id) {
+            show_404();
+        }
+
+        if (!$this->can_view_tasks("", 0, $task_info)) {
+            app_redirect("forbidden");
+        }
+
+        $comment_page_size = 50;
+        $offset = max(0, (int) $offset);
+        $options = array(
+            "task_id" => $task_id,
+            "login_user_id" => $this->login_user->id,
+            "limit" => $comment_page_size + 1,
+            "offset" => $offset,
+        );
+
+        $comments = $this->Project_comments_model->get_details($options)->getResult();
+        $comments_has_more = count($comments) > $comment_page_size;
+        if ($comments_has_more) {
+            array_pop($comments);
+        }
+
+        $view_data = array(
+            "comments" => $comments,
+            "omit_comment_list_scripts" => true,
+            "comments_has_more" => $comments_has_more,
+            "comments_loader_offset" => $offset + count($comments),
+            "task_id" => $task_id,
+        );
+
+        return $this->template->view("tasks/comments_load_more_data", $view_data);
     }
 
     /* save task comments */

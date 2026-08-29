@@ -1086,6 +1086,96 @@ class Notifications_model extends Crud_model {
         return $data;
     }
 
+    /**
+     * Unread inbox totals for current filters: raw notifications + unique tasks/tickets.
+     */
+    function count_unread_inbox_stats($user_id, $options = []) {
+        $notifications_table = $this->db->prefixTable('notifications');
+        $users_table = $this->db->prefixTable('users');
+        $projects_table = $this->db->prefixTable('projects');
+        $project_comments_table = $this->db->prefixTable('project_comments');
+        $tasks_table = $this->db->prefixTable('tasks');
+        $tickets_table = $this->db->prefixTable('tickets');
+        $ticket_comments_table = $this->db->prefixTable('ticket_comments');
+        $posts_table = $this->db->prefixTable('posts');
+        $announcements_table = $this->db->prefixTable('announcements');
+
+        $user_id = intval($user_id);
+        if (!$user_id) {
+            return array("unread_total" => 0, "unread_unique" => 0);
+        }
+
+        $where = " AND FIND_IN_SET($user_id, $notifications_table.read_by) = 0";
+
+        $event = $this->_get_clean_value($options, "event");
+        if ($event) {
+            $in = "'" . str_replace(',', "','", $event) . "'";
+            $where .= " AND $notifications_table.event IN($in)";
+        }
+
+        $team_members = $this->_get_clean_value($options, "team_member");
+        if ($team_members) {
+            $where .= " AND (FIND_IN_SET('$team_members', $notifications_table.notify_to) OR $notifications_table.user_id = $team_members)";
+        }
+
+        $project_id = $this->_get_clean_value($options, "project_id");
+        if ($project_id) {
+            $where .= " AND $notifications_table.project_id = $project_id";
+        }
+
+        $search_by = trim((string) get_array_value($options, "search_by"));
+        $needs_search_joins = ($search_by !== "");
+        if ($needs_search_joins) {
+            $like = $this->db->escapeLikeString($search_by);
+            $where .= " AND (
+                CONCAT($users_table.first_name, ' ', $users_table.last_name) LIKE '%$like%' ESCAPE '!'
+                OR $projects_table.title LIKE '%$like%' ESCAPE '!'
+                OR $tasks_table.title LIKE '%$like%' ESCAPE '!'
+                OR $tickets_table.title LIKE '%$like%' ESCAPE '!'
+                OR $project_comments_table.description LIKE '%$like%' ESCAPE '!'
+                OR $ticket_comments_table.description LIKE '%$like%' ESCAPE '!'
+                OR $posts_table.description LIKE '%$like%' ESCAPE '!'
+                OR $announcements_table.title LIKE '%$like%' ESCAPE '!'
+                OR CAST($tasks_table.id AS CHAR) LIKE '%$like%' ESCAPE '!'
+                OR CAST($tickets_table.id AS CHAR) LIKE '%$like%' ESCAPE '!'
+            )";
+        }
+
+        $joins = "";
+        if ($needs_search_joins) {
+            $joins = "
+        LEFT JOIN $projects_table ON $projects_table.id=$notifications_table.project_id
+        LEFT JOIN $project_comments_table ON $project_comments_table.id=$notifications_table.project_comment_id
+        LEFT JOIN $tasks_table ON $tasks_table.id=$notifications_table.task_id
+        LEFT JOIN $tickets_table ON $tickets_table.id=$notifications_table.ticket_id
+        LEFT JOIN $ticket_comments_table ON $ticket_comments_table.id=$notifications_table.ticket_comment_id
+        LEFT JOIN $posts_table ON $posts_table.id=$notifications_table.post_id
+        LEFT JOIN $users_table ON $users_table.id=$notifications_table.user_id
+        LEFT JOIN $announcements_table ON $announcements_table.id=$notifications_table.announcement_id";
+        }
+
+        $group_key = "CASE
+            WHEN $notifications_table.task_id > 0 THEN CONCAT('task-', $notifications_table.task_id)
+            WHEN $notifications_table.ticket_id > 0 THEN CONCAT('ticket-', $notifications_table.ticket_id)
+            ELSE CONCAT('id-', $notifications_table.id)
+        END";
+
+        $sql = "SELECT
+            COUNT($notifications_table.id) AS unread_total,
+            COUNT(DISTINCT $group_key) AS unread_unique
+        FROM $notifications_table
+        $joins
+        WHERE $notifications_table.deleted=0
+            AND FIND_IN_SET($user_id, $notifications_table.notify_to) != 0
+            $where";
+
+        $row = $this->db->query($sql)->getRow();
+        return array(
+            "unread_total" => $row ? (int) $row->unread_total : 0,
+            "unread_unique" => $row ? (int) $row->unread_unique : 0,
+        );
+    }
+
     function get_email_notification($notification_id) {
         $notifications_table = $this->db->prefixTable('notifications');
         $users_table = $this->db->prefixTable('users');

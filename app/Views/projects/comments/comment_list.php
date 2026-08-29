@@ -171,14 +171,22 @@ foreach ($comments as $comment) {
     </div>
 <?php } ?>
 
+<?php if (empty($omit_comment_list_scripts)) { ?>
 <script>
     $(document).ready(function() {
-        $(".like-button").click(function() {
+        function highlightSpecificComment(commentId) {
+            $(".comment-highlight-section").removeClass("comment-highlight");
+            $("#comment-" + commentId).addClass("comment-highlight");
+            window.location.hash = ""; //remove first to scroll with main link
+            window.location.hash = "comment-" + commentId;
+        }
+
+        $(document).off("click.taskCommentActions", ".like-button").on("click.taskCommentActions", ".like-button", function() {
             var $icon = $(this).find("svg");
             $icon.toggleClass("icon-fill-secondary");
         });
 
-        $(".comment-highlight-link").click(function(e) {
+        $(document).off("click.taskCommentActions", ".comment-highlight-link").on("click.taskCommentActions", ".comment-highlight-link", function(e) {
             var commentId = $(this).attr('data-comment-id');
             var taskId = $(this).attr('data-task-id');
 
@@ -197,14 +205,7 @@ foreach ($comments as $comment) {
             highlightSpecificComment(commentId);
         }
 
-        function highlightSpecificComment(commentId) {
-            $(".comment-highlight-section").removeClass("comment-highlight");
-            $("#comment-" + commentId).addClass("comment-highlight");
-            window.location.hash = ""; //remove first to scroll with main link
-            window.location.hash = "comment-" + commentId;
-        }
-
-        $(".pin-comment-button").click(function() {
+        $(document).off("click.taskCommentActions", ".pin-comment-button").on("click.taskCommentActions", ".pin-comment-button", function() {
             var comment_id = $(this).attr('data-pin-comment-id');
             appLoader.show();
             $.ajax({
@@ -233,7 +234,7 @@ foreach ($comments as $comment) {
             });
         });
 
-        $(".unpin-comment-button").click(function() {
+        $(document).off("click.taskCommentActions", ".unpin-comment-button").on("click.taskCommentActions", ".unpin-comment-button", function() {
             var comment_id = $(this).attr('data-pin-comment-id');
             $("#pin-comment-button-" + comment_id).removeClass("hide");
             $("#unpin-comment-button-" + comment_id).addClass("hide");
@@ -243,7 +244,7 @@ foreach ($comments as $comment) {
             }, 2000);
         });
 
-        $(".pinned-comment-highlight-link").click(function(e) {
+        $(document).off("click.taskCommentActions", ".pinned-comment-highlight-link").on("click.taskCommentActions", ".pinned-comment-highlight-link", function(e) {
             var comment_id = $(this).attr('data-original-comment-link-id');
             $(".comment-highlight-section").removeClass("comment-highlight");
             $("#comment-" + comment_id).addClass("comment-highlight");
@@ -251,7 +252,7 @@ foreach ($comments as $comment) {
             e.preventDefault();
         });
 
-        $(".copy-comment-link-button").click(function() {
+        $(document).off("click.taskCommentActions", ".copy-comment-link-button").on("click.taskCommentActions", ".copy-comment-link-button", function() {
             var commentId = $(this).attr('data-comment-id');
             var taskId = $(this).attr('data-task-id');
             var tempInput = document.createElement("input");
@@ -264,3 +265,4 @@ foreach ($comments as $comment) {
         });
     });
 </script>
+<?php } ?>

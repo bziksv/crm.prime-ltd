@@ -461,6 +461,14 @@ if ($total_sub_tasks) {
                                 <?php echo view("projects/comments/comment_list"); ?>
                             </div>
 
+                            <?php
+                            echo view("tasks/comments_pagination_loader", array(
+                                "comments_has_more" => !empty($comments_has_more),
+                                "comments_loader_offset" => isset($comments_next_offset) ? $comments_next_offset : count($comments),
+                                "task_id" => $task_id,
+                            ));
+                            ?>
+
                         </div>
                     </div>
                 </div>

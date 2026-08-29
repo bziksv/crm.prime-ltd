@@ -13,7 +13,9 @@
         hasMore: true,
         loading: false,
         tab: "unread",
-        search: ""
+        search: "",
+        unreadTotal: 0,
+        unreadUnique: 0
     };
 
     function getListEl() {
@@ -26,6 +28,48 @@
 
     function getDetailBody() {
         return $("#notification-detail-body");
+    }
+
+    function renderUnreadCounts() {
+        var $counts = $("#notifications-unread-counts");
+        if (!$counts.length) {
+            return;
+        }
+
+        var total = Math.max(0, parseInt(state.unreadTotal, 10) || 0);
+        var unique = Math.max(0, parseInt(state.unreadUnique, 10) || 0);
+
+        $counts.find('[data-bs-toggle="tooltip"]').tooltip("dispose");
+
+        if (!total && !unique) {
+            $counts.attr("hidden", true).empty();
+            return;
+        }
+
+        $counts.removeAttr("hidden").html(
+            '<span class="notifications-inbox-tab-count" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Всего непрочитанных">' + total + "</span>" +
+            '<span class="notifications-inbox-tab-sep">·</span>' +
+            '<span class="notifications-inbox-tab-count is-unique" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Уникальных задач">' + unique + "</span>"
+        );
+
+        $counts.find('[data-bs-toggle="tooltip"]').tooltip();
+    }
+
+    function setUnreadCounts(total, unique) {
+        if (typeof total === "number") {
+            state.unreadTotal = Math.max(0, total);
+        }
+        if (typeof unique === "number") {
+            state.unreadUnique = Math.max(0, unique);
+        }
+        renderUnreadCounts();
+    }
+
+    function adjustUnreadCounts(deltaTotal, deltaUnique) {
+        setUnreadCounts(
+            (parseInt(state.unreadTotal, 10) || 0) + (parseInt(deltaTotal, 10) || 0),
+            (parseInt(state.unreadUnique, 10) || 0) + (parseInt(deltaUnique, 10) || 0)
+        );
     }
 
     function avatarHue(initial) {
@@ -241,6 +285,13 @@
                 var hasMore = !!(response.hasMore && (response.data || []).length);
                 updateLoadMore(hasMore);
                 setActiveItem(activeNotificationId);
+
+                if (reset || typeof response.unread_total !== "undefined") {
+                    setUnreadCounts(
+                        parseInt(response.unread_total, 10) || 0,
+                        parseInt(response.unread_unique, 10) || 0
+                    );
+                }
             },
             error: function (_, status) {
                 setLoading(false);
@@ -297,15 +348,35 @@
 
     function markItemRead(notificationId) {
         var $item = $(".js-notification-inbox-item[data-id='" + notificationId + "']");
+        if (!$item.length) {
+            return;
+        }
+
+        var wasUnread = $item.hasClass("is-unread");
+        var badgeCount = parseInt($item.find(".notifications-inbox-badge").first().text(), 10) || 1;
+
         $item.removeClass("is-unread");
         $item.find(".notifications-inbox-badge").remove();
+
+        if (wasUnread) {
+            adjustUnreadCounts(-badgeCount, -1);
+        }
     }
 
     function markItemUnread(notificationId) {
         var $item = $(".js-notification-inbox-item[data-id='" + notificationId + "']");
+        if (!$item.length) {
+            return;
+        }
+
+        var wasUnread = $item.hasClass("is-unread");
         $item.addClass("is-unread");
         if (!$item.find(".notifications-inbox-badge").length) {
             $item.find(".notifications-inbox-item-meta").prepend('<span class="notifications-inbox-badge">1</span>');
+        }
+
+        if (!wasUnread) {
+            adjustUnreadCounts(1, 1);
         }
     }
 
