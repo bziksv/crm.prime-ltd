@@ -173,6 +173,28 @@ class Notifications extends Security_Controller {
     }
 
     function set_notification_status_as_read($notification_id = 0) {
+        $task_id = (int) $this->request->getPost("task_id");
+        $ticket_id = (int) $this->request->getPost("ticket_id");
+        $ids = $this->request->getPost("ids");
+
+        if ($task_id || $ticket_id || $ids) {
+            if (!is_array($ids)) {
+                if (is_string($ids) && $ids !== "") {
+                    $ids = preg_split('/\s*,\s*/', $ids);
+                } else {
+                    $ids = array();
+                }
+            }
+
+            $this->Notifications_model->set_related_notifications_as_read($this->login_user->id, array(
+                "task_id" => $task_id,
+                "ticket_id" => $ticket_id,
+                "ids" => $ids,
+            ));
+            echo json_encode(array("success" => true));
+            return;
+        }
+
         if ($notification_id) {
             validate_numeric_value($notification_id);
             $this->Notifications_model->set_notification_status_as_read($notification_id, $this->login_user->id);

@@ -1332,6 +1332,52 @@ class Notifications_model extends Crud_model {
         return $this->db->query($sql);
     }
 
+    /**
+     * Mark unread notifications as read for a task, ticket, or explicit id list.
+     * Used when opening a grouped chronicle item so the whole group is cleared.
+     */
+    function set_related_notifications_as_read($user_id, $options = array()) {
+        $notifications_table = $this->db->prefixTable('notifications');
+        $user_id = intval($user_id);
+        if (!$user_id) {
+            return false;
+        }
+
+        $where = "";
+        $task_id = intval(get_array_value($options, "task_id"));
+        $ticket_id = intval(get_array_value($options, "ticket_id"));
+        $ids = get_array_value($options, "ids");
+
+        if ($task_id > 0) {
+            $where = " AND $notifications_table.task_id=$task_id";
+        } else if ($ticket_id > 0) {
+            $where = " AND $notifications_table.ticket_id=$ticket_id";
+        } else if (is_array($ids) && count($ids)) {
+            $clean_ids = array();
+            foreach ($ids as $id) {
+                $id = intval($id);
+                if ($id > 0) {
+                    $clean_ids[] = $id;
+                }
+            }
+            $clean_ids = array_values(array_unique($clean_ids));
+            if (!$clean_ids) {
+                return false;
+            }
+            $where = " AND $notifications_table.id IN(" . implode(",", $clean_ids) . ")";
+        } else {
+            return false;
+        }
+
+        $sql = "UPDATE $notifications_table SET $notifications_table.read_by = CONCAT($notifications_table.read_by,',',$user_id)
+        WHERE $notifications_table.deleted=0
+            AND FIND_IN_SET($user_id, $notifications_table.notify_to) != 0
+            AND FIND_IN_SET($user_id, $notifications_table.read_by) = 0
+            $where";
+
+        return $this->db->query($sql);
+    }
+
     function set_notification_status_as_unread($notification_id, $user_id = 0) {
         $notifications_table = $this->db->prefixTable('notifications');
 

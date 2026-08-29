@@ -145,7 +145,7 @@
     window.notificationPanelUrl = "<?php echo get_uri('notifications/view_panel'); ?>";
     window.notificationInboxFilters = <?php echo json_encode($inbox_filters ?: new stdClass()); ?>;
 </script>
-<script src="<?php echo base_url('assets/js/notifications-inbox.js?v=20260830g'); ?>"></script>
+<script src="<?php echo base_url('assets/js/notifications-inbox.js?v=20260830h'); ?>"></script>
 
 <script>
     $(document).ready(function () {

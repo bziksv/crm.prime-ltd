@@ -418,9 +418,52 @@
         }
     }
 
-    function markNotificationReadOnServer(notificationId) {
+    function markNotificationReadOnServer(notificationId, taskId, ticketId) {
+        notificationId = parseInt(notificationId, 10) || 0;
+        taskId = parseInt(taskId, 10) || 0;
+        ticketId = parseInt(ticketId, 10) || 0;
+
+        var $item = notificationId
+            ? $(".js-notification-inbox-item[data-id='" + notificationId + "']")
+            : $();
+        if (!$item.length && notificationId) {
+            $item = $(".js-notification-inbox-item").filter(function () {
+                var ids = String($(this).attr("data-ids") || "").split(",");
+                return ids.indexOf(String(notificationId)) !== -1;
+            }).first();
+        }
+
+        var ids = [];
+        if ($item.length) {
+            ids = String($item.attr("data-ids") || $item.attr("data-id") || "")
+                .split(",")
+                .map(function (id) { return parseInt(id, 10); })
+                .filter(function (id) { return id > 0; });
+            if (!taskId) {
+                taskId = parseInt($item.attr("data-task-id"), 10) || 0;
+            }
+            if (!ticketId) {
+                ticketId = parseInt($item.attr("data-ticket-id"), 10) || 0;
+            }
+        } else if (notificationId) {
+            ids = [notificationId];
+        }
+
+        var data = {};
+        if (taskId) {
+            data.task_id = taskId;
+        } else if (ticketId) {
+            data.ticket_id = ticketId;
+        } else if (ids.length) {
+            data.ids = ids;
+        } else {
+            return;
+        }
+
         $.ajax({
-            url: AppHelper.baseUrl + "index.php/notifications/set_notification_status_as_read/" + notificationId
+            url: AppHelper.baseUrl + "index.php/notifications/set_notification_status_as_read" + (notificationId && !taskId && !ticketId && ids.length <= 1 ? "/" + notificationId : ""),
+            type: "POST",
+            data: data
         });
     }
 
@@ -489,8 +532,9 @@
         setPanelState(true);
         updateNotificationUrl(notificationId);
         showPanelLoading();
-        markItemRead(notificationId);
         syncCsrf();
+        markItemRead(notificationId);
+        markNotificationReadOnServer(notificationId, taskId, ticketId);
 
         if (panelXhr && panelXhr.readyState !== 4) {
             panelXhr.abort();
@@ -527,7 +571,6 @@
                         return;
                     }
                     initEmbeddedPanelContent();
-                    markNotificationReadOnServer(notificationId);
                 },
                 error: function (_, status) {
                     onPanelError(status);
@@ -549,7 +592,6 @@
                         return;
                     }
                     initEmbeddedPanelContent();
-                    markNotificationReadOnServer(notificationId);
                 },
                 error: function (_, status) {
                     onPanelError(status);
