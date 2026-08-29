@@ -109,7 +109,7 @@
         var previewHtml = preview ? '<div class="notifications-inbox-item-preview">' + preview + "</div>" : "";
 
         return (
-            '<div role="button" tabindex="0" class="notifications-inbox-item js-notification-inbox-item' + unreadClass + '" data-id="' + item.id + '" data-ticket-id="' + (item.ticket_id || "") + '" data-task-id="' + (item.task_id || "") + '" data-date-group="' + getDateGroupLabel(item.created_at) + '">' +
+            '<div role="button" tabindex="0" class="notifications-inbox-item js-notification-inbox-item' + unreadClass + '" data-id="' + item.id + '" data-ids="' + (item.ids || [item.id]).join(",") + '" data-ticket-id="' + (item.ticket_id || "") + '" data-task-id="' + (item.task_id || "") + '" data-date-group="' + getDateGroupLabel(item.created_at) + '">' +
                 buildAvatar(item) +
                 '<div class="notifications-inbox-item-body">' +
                     '<div class="notifications-inbox-item-top">' +
@@ -393,7 +393,7 @@
                     if (status === "abort") {
                         return;
                     }
-                    loadNotificationPanel(notificationId);
+                    loadNotificationPanel(notificationId, false);
                 }
             });
             return;
@@ -417,7 +417,7 @@
                     if (status === "abort") {
                         return;
                     }
-                    loadNotificationPanel(notificationId);
+                    loadNotificationPanel(notificationId, false);
                 }
             });
             return;
@@ -426,12 +426,28 @@
         loadNotificationPanel(notificationId);
     }
 
-    function loadNotificationPanel(notificationId) {
+    function loadNotificationPanel(notificationId, allowUpgrade) {
+        if (typeof allowUpgrade === "undefined") {
+            allowUpgrade = true;
+        }
+
         panelXhr = $.ajax({
             url: window.notificationPanelUrl || (AppHelper.baseUrl + "index.php/notifications/view_panel"),
             type: "POST",
             data: { id: notificationId },
             success: function (response) {
+                var $parsed = $("<div>").html(response);
+                var $view = $parsed.find(".notification-panel-view").first();
+                var taskId = parseInt($view.attr("data-task-id"), 10) || 0;
+                var ticketId = parseInt($view.attr("data-ticket-id"), 10) || 0;
+
+                // Prefer full task/ticket panel when notification points to one
+                if (allowUpgrade && (taskId || ticketId)) {
+                    activeNotificationId = null;
+                    openNotification(notificationId, ticketId, taskId);
+                    return;
+                }
+
                 getDetailBody().html(response);
                 ensureMarkUnreadControl(getDetailBody());
                 if (typeof feather !== "undefined") {
@@ -600,7 +616,7 @@
                 return;
             }
             // Let image lightbox / modals handle Esc first (Magnific uses keyup)
-            if ($(".mfp-ready, .mfp-wrap").length) {
+            if ($(".mfp-ready, .mfp-wrap, .app-modal").length) {
                 return;
             }
             if ($.magnificPopup && $.magnificPopup.instance && $.magnificPopup.instance.isOpen) {
@@ -610,6 +626,56 @@
                 return;
             }
             closeNotificationPanel();
+        });
+
+        // Pasted screenshots without <a> (legacy / preview=false) — open Magnific on img click
+        $(document).on("click", ".notifications-list-page .timeline-images:not(.app-modal-view) img.pasted-image", function (event) {
+            if ($(this).closest("a").length) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (typeof $.magnificPopup !== "object" || typeof $.magnificPopup.open !== "function") {
+                return;
+            }
+
+            var $imgs = $(this).closest(".notification-panel-description, .notification-panel-body, .comment, .mb-5, #notification-detail-body")
+                .find(".timeline-images:not(.app-modal-view) img.pasted-image");
+            if (!$imgs.length) {
+                $imgs = $(this);
+            }
+
+            var items = [];
+            var index = 0;
+            var clickedSrc = $(this).attr("src");
+            $imgs.each(function (i) {
+                var src = $(this).attr("src");
+                if (!src) {
+                    return;
+                }
+                if (src === clickedSrc) {
+                    index = items.length;
+                }
+                items.push({
+                    src: src,
+                    title: $(this).attr("alt") || ""
+                });
+            });
+
+            if (!items.length) {
+                return;
+            }
+
+            $.magnificPopup.open({
+                items: items,
+                type: "image",
+                index: index,
+                closeOnContentClick: false,
+                closeBtnInside: false,
+                mainClass: "mfp-with-zoom mfp-img-mobile",
+                gallery: { enabled: items.length > 1 }
+            });
         });
     }
 
@@ -631,6 +697,12 @@
         // Wait for list load, then open; ticket_id comes from list item if present
         var tryOpen = function () {
             var $item = $(".js-notification-inbox-item[data-id='" + notificationId + "']");
+            if (!$item.length) {
+                $item = $(".js-notification-inbox-item").filter(function () {
+                    var ids = String($(this).attr("data-ids") || "").split(",");
+                    return ids.indexOf(String(notificationId)) !== -1;
+                }).first();
+            }
             if ($item.length) {
                 openNotification(notificationId, $item.attr("data-ticket-id"), $item.attr("data-task-id"));
                 return;

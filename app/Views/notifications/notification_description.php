@@ -49,7 +49,8 @@ if ($notification->leave_id && $notification->leave_start_date) {
 }
 
 if ($notification->project_comment_id && $notification->project_comment_title && !strpos($notification->project_comment_title, "</a>")) {
-    echo "<div>" . app_lang("comment") . ": " . convert_mentions(convert_comment_link(process_images_from_content($notification->project_comment_title, false), false), false) . "</div>";
+    // add_preview=true so pasted screenshots open in Magnific lightbox
+    echo "<div>" . app_lang("comment") . ": " . convert_mentions(convert_comment_link(process_images_from_content($notification->project_comment_title, true), false), false) . "</div>";
 }
 
 if ($notification->project_file_id && $notification->project_file_title) {

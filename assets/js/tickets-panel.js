@@ -299,7 +299,7 @@
                 return;
             }
             // Let image lightbox / modals handle Esc first (Magnific uses keyup)
-            if ($(".mfp-ready, .mfp-wrap").length) {
+            if ($(".mfp-ready, .mfp-wrap, .app-modal").length) {
                 return;
             }
             if ($.magnificPopup && $.magnificPopup.instance && $.magnificPopup.instance.isOpen) {

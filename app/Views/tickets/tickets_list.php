@@ -88,7 +88,7 @@
 <script type="text/javascript">
     window.ticketInboxListUrl = "<?php echo get_uri('tickets/inbox_list_data'); ?>";
 </script>
-<script src="<?php echo base_url('assets/js/tickets-panel.js?v=20260829a'); ?>"></script>
+<script src="<?php echo base_url('assets/js/tickets-panel.js?v=20260829b'); ?>"></script>
 <script src="<?php echo base_url('assets/js/tickets-inbox.js?v=20260828m'); ?>"></script>
 
 

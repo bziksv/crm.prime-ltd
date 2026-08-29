@@ -1,7 +1,10 @@
 <?php
 $open_url = $url && $url !== "#" ? $url : "";
 ?>
-<div class="notification-panel-view" data-notification-id="<?php echo (int) $notification->id; ?>">
+<div class="notification-panel-view"
+     data-notification-id="<?php echo (int) $notification->id; ?>"
+     data-task-id="<?php echo !empty($notification->task_id) ? (int) $notification->task_id : 0; ?>"
+     data-ticket-id="<?php echo !empty($notification->ticket_id) ? (int) $notification->ticket_id : 0; ?>">
     <div class="notification-panel-header">
         <div class="notification-panel-heading">
             <div class="notification-panel-actor">

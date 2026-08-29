@@ -3101,24 +3101,33 @@ if (!function_exists('process_images_from_content')) {
         if ($image_tags && count($image_tags)) {
             foreach ($image_tags as $key => $image_tag) {
 
-                //get image source url
-                preg_match('/src="([^"]*)"/i', $image_tag, $matches);
-                $source_url = get_array_value($matches, 1);
+                //get image source url (double or single quotes)
+                $source_url = "";
+                if (preg_match('/src\s*=\s*"([^"]*)"/i', $image_tag, $matches) || preg_match("/src\s*=\s*'([^']*)'/i", $image_tag, $matches)) {
+                    $source_url = get_array_value($matches, 1);
+                }
+
+                $is_pasted_image = (bool) preg_match('/\bclass\s*=\s*[\'"][^\'"]*\bpasted-image\b/i', $image_tag);
 
                 //check if there has already an anchor tag surrounding this img tag
                 //we also have to check the pasted-image class because there has static images somewhere like contract editor
-                if (strpos($text, '<a href="' . $source_url . '" class="mfp-image"') === false && strpos($image_tag, 'class="pasted-image"') !== false) {
+                if ($source_url && $is_pasted_image && strpos($text, '<a href="' . $source_url . '" class="mfp-image"') === false && strpos($text, "<a href='$source_url' class='mfp-image'") === false) {
                     //anchor tag not exists and it's a pasted image
                     //get actual file name of image
-                    preg_match('/alt="([^"]*)"/i', $image_tag, $matches);
-                    $image_file_name = get_array_value($matches, 1);
+                    $image_file_name = "";
+                    if (preg_match('/alt\s*=\s*"([^"]*)"/i', $image_tag, $matches) || preg_match("/alt\s*=\s*'([^']*)'/i", $image_tag, $matches)) {
+                        $image_file_name = get_array_value($matches, 1);
+                    }
                     $actual_file_name = remove_file_prefix($image_file_name);
 
                     //add mfp-image viewer anchor tag
                     $images[] = "<a href='$source_url' class='mfp-image' data-title='" . $actual_file_name . "'>$image_tag</a>";
-                } else {
+                } else if ($source_url) {
                     //anchor tag exists from before or anchor tag isn't necessary
                     $images[] = "<a href='$source_url' target='_blank' style='display: flex;width: 100px;height: 100px;'><img src='$source_url'></a>";
+                } else {
+                    // keep original tag if src could not be parsed
+                    $images[] = $image_tag;
                 }
             }
         }
