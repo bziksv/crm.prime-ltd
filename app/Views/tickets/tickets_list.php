@@ -83,7 +83,7 @@
 
 </div>
 
-<link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-inbox.css?v=20260829a'); ?>">
+<link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-inbox.css?v=20260829b'); ?>">
 <link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-panel.css?v=20260828r'); ?>">
 <script type="text/javascript">
     window.ticketInboxListUrl = "<?php echo get_uri('tickets/inbox_list_data'); ?>";

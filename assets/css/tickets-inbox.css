@@ -5,8 +5,9 @@ html:has(.tickets-list-page) {
     height: 100% !important;
 }
 
+/* Keep sidebar hover labels visible when menu is collapsed */
 body:has(.tickets-list-page) #left-menu-toggle-mask {
-    overflow: hidden !important;
+    overflow: visible !important;
     height: 100vh !important;
     max-height: 100vh !important;
 }
@@ -14,6 +15,11 @@ body:has(.tickets-list-page) #left-menu-toggle-mask {
 body:has(.tickets-list-page) .sidebar .sidebar-scroll {
     overflow-y: auto !important;
     max-height: calc(100vh - 65px);
+}
+
+body.sidebar-toggled:has(.tickets-list-page) .sidebar,
+body.sidebar-toggled:has(.tickets-list-page) .sidebar .sidebar-scroll {
+    overflow: visible !important;
 }
 
 body:has(.tickets-list-page) .page-container {

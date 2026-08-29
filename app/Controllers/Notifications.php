@@ -18,7 +18,8 @@ class Notifications extends Security_Controller {
 
     //load notifications view
     function index() {
-        $view_data = $this->_prepare_notification_list();
+        $filters = $this->_get_notification_filters();
+        $view_data = array();
         $view_data["notifications_filters"] = [];
         $view_data["event_dropdown"] = $this->event_dropdown();
         $view_data["is_read_dropdown"] = $this->is_read_dropdown();
@@ -26,12 +27,113 @@ class Notifications extends Security_Controller {
         $view_data["order_by_dropdown"] = $this->order_by_dropdown();
         $view_data["projects_dropdown"] = $this->projects_dropdown();
         $view_data["team_members_dropdown"] = $this->team_members_dropdown();
+        $view_data["inbox_filters"] = $filters;
+        $view_data["has_active_filters"] = !empty($filters);
 
         if ($notifications_filters = $this->Settings_model->get_setting($this->notifications_filters)) {
             $view_data["notifications_filters"] = unserialize($notifications_filters);
         }
 
         return $this->template->rander("notifications/index", $view_data);
+    }
+
+    function inbox_list_data() {
+        $skip = (int) $this->request->getPost("skip");
+        $limit = (int) $this->request->getPost("limit");
+        if ($limit <= 0 || $limit > 50) {
+            $limit = 40;
+        }
+
+        $filters = $this->_get_notification_filters();
+
+        // Tabs own read-status; advanced GET is_read is ignored while tabs are used
+        $tab = $this->request->getPost("tab");
+        if ($tab === "unread") {
+            $filters["notification_is_read_filter"] = "0";
+        } else {
+            unset($filters["notification_is_read_filter"]);
+        }
+
+        $options = array(
+            "event" => get_array_value($filters, "notification_event_filter"),
+            "is_read" => get_array_value($filters, "notification_is_read_filter"),
+            "grouped" => get_array_value($filters, "notification_grouped_filter"),
+            "team_member" => get_array_value($filters, "notification_team_members_filter"),
+            "project_id" => get_array_value($filters, "notification_projects_filter"),
+            "order_by" => get_array_value($filters, "notification_order_by_filter"),
+        );
+
+        $notifications = $this->Notifications_model->get_notifications($this->login_user->id, $skip, $limit, $options);
+
+        if ($this->should_group_notifications(get_array_value($options, "grouped"))) {
+            $grouped = (new NotificationGrouper($notifications->result))->get_grouped_unread_by_task();
+            $notifications->result = $this->_sort_notification_groups(
+                array_values($grouped),
+                get_array_value($options, "order_by")
+            );
+        }
+
+        $items = array();
+        foreach ($notifications->result as $notification) {
+            $item = $this->_make_inbox_item($notification);
+            if ($item) {
+                $items[] = $item;
+            }
+        }
+
+        $found_rows = (int) $notifications->found_rows;
+        echo json_encode(array(
+            "success" => true,
+            "data" => $items,
+            "recordsTotal" => $found_rows,
+            "hasMore" => ($skip + count($items)) < $found_rows,
+        ), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    function view_panel($notification_id = 0) {
+        if (!$notification_id) {
+            $notification_id = (int) $this->request->getPost("id");
+        }
+        validate_numeric_value($notification_id);
+
+        $notification = $this->Notifications_model->get_email_notification($notification_id);
+        if (!$notification) {
+            echo "<div class='notification-panel-placeholder'>Уведомление не найдено</div>";
+            return;
+        }
+
+        // Ensure this notification belongs to current user
+        $notify_to = explode(",", (string) $notification->notify_to);
+        if (!in_array((string) $this->login_user->id, $notify_to)) {
+            echo "<div class='notification-panel-placeholder'>Нет доступа</div>";
+            return;
+        }
+
+        $this->Notifications_model->set_notification_status_as_read($notification_id, $this->login_user->id);
+
+        $url_attributes_array = get_notification_url_attributes($notification);
+        $changes_array = array();
+        if ($notification->activity_log_changes !== "") {
+            if ($notification->event === "bitbucket_push_received" || $notification->event === "github_push_received") {
+                $changes_array = get_change_logs_array($notification->activity_log_changes, $notification->activity_log_type, $notification->event, true);
+            } else {
+                $changes_array = get_change_logs_array($notification->activity_log_changes, $notification->activity_log_type, "all");
+            }
+        }
+
+        $actor = $this->_notification_actor($notification);
+
+        $view_data = array(
+            "notification" => $notification,
+            "changes_array" => $changes_array,
+            "url" => get_array_value($url_attributes_array, "url"),
+            "url_attributes" => get_array_value($url_attributes_array, "url_attributes"),
+            "actor_name" => $actor["name"],
+            "actor_avatar" => $actor["avatar"],
+            "event_label" => sprintf(app_lang("notification_" . $notification->event), $notification->to_user_name),
+        );
+
+        return $this->template->view("notifications/panel_view", $view_data);
     }
 
     function load_more($offset = 0) {
@@ -282,6 +384,152 @@ class Notifications extends Security_Controller {
             ["id" => "DESC", "text" => "Новые"],
             ["id" => "ASC", "text" => "Старые"],
         ];
+    }
+
+    private function _notification_actor($notification) {
+        $avatar = get_avatar("system_bot");
+        $name = get_setting("app_title");
+
+        if ($notification->user_id) {
+            if ($notification->user_id == "999999998") {
+                $avatar = get_avatar("bitbucket");
+                $name = "Bitbucket";
+            } else if ($notification->user_id == "999999997") {
+                $avatar = get_avatar("github");
+                $name = "GitHub";
+            } else if ($notification->user_id == "999999996") {
+                $signer_info = $notification->contract_meta_data ?? null;
+                if (!empty($notification->estimate_id)) {
+                    $signer_info = $notification->estimate_meta_data ?? null;
+                } else if (!empty($notification->proposal_id)) {
+                    $signer_info = $notification->proposal_meta_data ?? null;
+                }
+
+                $signer_info = @unserialize($signer_info);
+                if (!($signer_info && is_array($signer_info))) {
+                    $signer_info = array();
+                }
+
+                $signer_name = get_array_value($signer_info, "name");
+                $name = $signer_name ?: app_lang("unknown_user");
+                $avatar = get_avatar();
+            } else {
+                $avatar = get_avatar($notification->user_image ?? null);
+                $name = $notification->user_name ?: get_setting("app_title");
+            }
+        }
+
+        return array("name" => $name, "avatar" => $avatar);
+    }
+
+    private function _inbox_time_label($datetime) {
+        if (!$datetime) {
+            return "";
+        }
+
+        $ts = strtotime($datetime);
+        if (!$ts) {
+            return "";
+        }
+
+        $today = strtotime("today");
+        $yesterday = strtotime("yesterday");
+
+        if ($ts >= $today) {
+            return date("H:i", $ts);
+        }
+
+        if ($ts >= $yesterday) {
+            return "Вчера";
+        }
+
+        if ($ts >= strtotime("-6 days", $today)) {
+            $days = array("Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб");
+            return $days[(int) date("w", $ts)];
+        }
+
+        return date("d.m.Y", $ts);
+    }
+
+    private function _make_inbox_item($notification) {
+        $changes_array = array();
+        $activity_changes = $notification->activity_log_changes ?? "";
+        if ($activity_changes !== "") {
+            if ($notification->event === "bitbucket_push_received" || $notification->event === "github_push_received") {
+                $changes_array = get_change_logs_array($activity_changes, $notification->activity_log_type, $notification->event, true);
+            } else {
+                $changes_array = get_change_logs_array($activity_changes, $notification->activity_log_type, "all");
+            }
+
+            if (!count($changes_array)) {
+                return null;
+            }
+        }
+
+        $actor = $this->_notification_actor($notification);
+        $event_label = strip_tags(sprintf(app_lang("notification_" . $notification->event), $notification->to_user_name));
+
+        $entity_title = "";
+        if (!empty($notification->ticket_id) && !empty($notification->ticket_title)) {
+            $entity_title = get_ticket_id($notification->ticket_id) . " — " . $notification->ticket_title;
+        } else if (!empty($notification->task_id) && !empty($notification->task_title)) {
+            $entity_title = "#" . $notification->task_id . " — " . $notification->task_title;
+        } else if (!empty($notification->project_title)) {
+            $entity_title = $notification->project_title;
+        } else if (!empty($notification->announcement_title)) {
+            $entity_title = $notification->announcement_title;
+        } else if (!empty($notification->event_title)) {
+            $entity_title = $notification->event_title;
+        }
+
+        $preview = "";
+        if (!empty($notification->ticket_comment_description)) {
+            $preview = $notification->ticket_comment_description;
+        } else if (!empty($notification->project_comment_title)) {
+            $preview = $notification->project_comment_title;
+        } else if (!empty($notification->posts_title)) {
+            $preview = $notification->posts_title;
+        }
+
+        $preview = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags((string) $preview), ENT_QUOTES | ENT_HTML5, "UTF-8")));
+        if (function_exists("mb_strlen") && mb_strlen($preview) > 120) {
+            $preview = mb_substr($preview, 0, 117) . "...";
+        } else if (strlen($preview) > 120) {
+            $preview = substr($preview, 0, 117) . "...";
+        }
+
+        $notification_ids = array((int) $notification->id);
+        if (property_exists($notification, "notification_ids_in_group") && is_array($notification->notification_ids_in_group)) {
+            $notification_ids = array_values(array_unique(array_merge($notification_ids, array_map("intval", $notification->notification_ids_in_group))));
+        }
+
+        $url_attributes_array = get_notification_url_attributes($notification);
+        $avatar_url = $actor["avatar"];
+        $avatar_initial = "";
+        if ($actor["name"] && function_exists("mb_substr")) {
+            $avatar_initial = mb_strtoupper(mb_substr($actor["name"], 0, 1));
+        } else if ($actor["name"]) {
+            $avatar_initial = strtoupper(substr($actor["name"], 0, 1));
+        }
+
+        return array(
+            "id" => (int) $notification->id,
+            "ids" => $notification_ids,
+            "actor_name" => $actor["name"],
+            "avatar_url" => $avatar_url,
+            "avatar_initial" => $avatar_initial,
+            "event_label" => $event_label,
+            "entity_title" => $entity_title,
+            "preview" => $preview,
+            "project_title" => $notification->project_title ?: "",
+            "created_at" => $notification->created_at,
+            "time_label" => $this->_inbox_time_label($notification->created_at),
+            "is_unread" => empty($notification->is_read),
+            "ticket_id" => !empty($notification->ticket_id) ? (int) $notification->ticket_id : 0,
+            "task_id" => !empty($notification->task_id) ? (int) $notification->task_id : 0,
+            "url" => get_array_value($url_attributes_array, "url") ?: "#",
+            "group_count" => count($notification_ids),
+        );
     }
 
 }

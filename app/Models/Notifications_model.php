@@ -1094,7 +1094,7 @@ class Notifications_model extends Crud_model {
         $subscriptions_table = $this->db->prefixTable('subscriptions');
         $proposal_comments_table = $this->db->prefixTable('proposal_comments');
 
-        $sql = "SELECT $notifications_table.*, CONCAT($users_table.first_name, ' ', $users_table.last_name) AS user_name,
+        $sql = "SELECT $notifications_table.*, CONCAT($users_table.first_name, ' ', $users_table.last_name) AS user_name, $users_table.image AS user_image,
                  $projects_table.title AS project_title,
                  $project_comments_table.description AS project_comment_title,
                  $project_files_table.file_name AS project_file_title,

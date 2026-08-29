@@ -1719,12 +1719,16 @@ class Tasks extends Security_Controller {
 
     function view($task_id = 0) {
         validate_numeric_value($task_id);
-        $view_type = "";
+        $view_type = $this->request->getPost("view_type");
 
         if ($task_id) { //details page
             $view_type = "details";
-        } else { //modal view
+        } else { //modal / panel view
             $task_id = $this->request->getPost('id');
+        }
+
+        if (!$view_type) {
+            $view_type = "";
         }
 
         $model_info = $this->Tasks_model->get_details(array("id" => $task_id))->getRow();

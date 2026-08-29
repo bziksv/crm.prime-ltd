@@ -32,6 +32,45 @@
         </div>
     </div>
 
+<?php } else if ($view_type == "panel_view") { ?>
+
+    <div class="task-panel-view clearfix general-form task-view-modal-body">
+        <div class="task-panel-view-header">
+            <div class="task-panel-view-heading">
+                <div class="task-panel-view-meta text-muted mb5">
+                    <?php echo app_lang("task_info") . " #" . $model_info->id; ?>
+                    <?php if (!empty($model_info->project_title)) { ?>
+                        · <?php echo esc($model_info->project_title); ?>
+                    <?php } ?>
+                </div>
+                <div class="task-panel-view-title text-break">
+                    <?php echo esc($model_info->title); ?>
+                </div>
+            </div>
+            <div class="task-panel-view-toolbar">
+                <a href="<?php echo get_uri("tasks/view/" . $model_info->id); ?>" class="btn btn-default btn-sm" title="<?php echo app_lang('task_info'); ?>" target="_blank">
+                    <i data-feather="external-link" class="icon-16"></i>
+                </a>
+                <button type="button" class="btn btn-default btn-sm js-task-panel-close" title="<?php echo app_lang('close'); ?>">
+                    <i data-feather="x" class="icon-16"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="task-panel-view-body">
+            <?php echo view("tasks/task_view_data"); ?>
+        </div>
+
+        <div class="task-panel-view-footer">
+            <?php
+            if ($can_edit_tasks) {
+                echo modal_anchor(get_uri("tasks/modal_form"), "<i data-feather='copy' class='icon-16'></i> " . app_lang('clone_task'), array("class" => "btn btn-default btn-sm", "data-post-is_clone" => true, "data-post-id" => $model_info->id, "title" => app_lang('clone_task')));
+                echo modal_anchor(get_uri("tasks/modal_form"), "<i data-feather='edit-2' class='icon-16'></i> " . app_lang('edit_task'), array("class" => "btn btn-default btn-sm", "data-post-id" => $model_info->id, "title" => app_lang('edit_task')));
+            }
+            ?>
+        </div>
+    </div>
+
 <?php } else { ?>
 
     <script type="text/javascript">
@@ -92,6 +131,7 @@ $task_link = anchor(get_uri("tasks/view/$model_info->id"), '<i data-feather="ext
 
         //make the checklist items sortable
         var $selector = $("#checklist-items");
+        if ($selector.length && typeof Sortable !== "undefined") {
         Sortable.create($selector[0], {
             animation: 150,
             chosenClass: "sortable-chosen",
@@ -119,10 +159,12 @@ $task_link = anchor(get_uri("tasks/view/$model_info->id"), '<i data-feather="ext
                 });
             }
         });
+        }
 
         //add a clickable link in task title.
-        $("#ajaxModalTitle").append('<?php echo $task_link ?>');
-
+        if ($("#ajaxModalTitle").length) {
+            $("#ajaxModalTitle").append('<?php echo $task_link ?>');
+        }
         //show the items in checklist
         $("#checklist-items").html(<?php echo $checklist_items; ?>);
 
