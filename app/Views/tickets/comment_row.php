@@ -1,4 +1,4 @@
-<?
+<?php
 $pin_status = "";
 $unpin_status = "";
 
@@ -105,7 +105,7 @@ if ($comment->pinned_comment_status) {
                 <?php } ?>
             </div>
 
-            <p><?php echo $comment->description; ?></p>
+            <p><?php echo localize_remote_content_urls($comment->description); ?></p>
 
             <div class="comment-image-box clearfix d-flex align-items-center">
                 <?php
@@ -125,21 +125,15 @@ if ($comment->pinned_comment_status) {
                 ?>
             </div>
 
-            <?php 
-                $Ticket_mails_model = model('App\Models\Ticket_mails_model');
-                $Users_model = model('App\Models\Users_model');
+            <?php
+                $recipients = isset($comment_recipients) ? $comment_recipients : array();
 
-                $ticket_mails = $Ticket_mails_model
-                    ->get_all_where(["ticket_comment_id" => $comment->id])
-                    ->getResult();
-
-                if (!empty($ticket_mails)) {
+                if (!empty($recipients)) {
                     $mainBlock = '<div style="margin-top: 35px">';
                     $mainBlock .= '<h5 class="small">Получатели</h5>';
 
                     $users = '';
-                    foreach ($ticket_mails as $mail) {
-                        $user = $Users_model->get_one($mail->to_user_id);
+                    foreach ($recipients as $user) {
                         if ($user && $user->email && $user->is_admin == '0') {
                             $users .= '<div><a class="dark strong" href="/index.php/clients/contact_profile/'.$user->id.'" target="_blank">' . esc($user->first_name . ' ' .$user->last_name . ' (' . $user->email . ')') . '</a></div>';
                         }

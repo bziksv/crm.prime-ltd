@@ -76,6 +76,18 @@ if (!function_exists('get_file_uri')) {
             if (is_file($local_path)) {
                 return base_url($normalized);
             }
+
+            $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+            $is_local_host = (function_exists('is_localhost') && is_localhost())
+                || strpos($host, '127.0.0.1') !== false
+                || strpos($host, 'localhost') !== false;
+
+            // On local: never hang on missing remote binaries for avatars; keep remote for logos/files
+            // so UI assets still render when the production files host is reachable.
+            if ($is_local_host && (strpos($normalized, 'profile_images/') !== false)) {
+                return base_url('assets/images/avatar.jpg');
+            }
+
             return rtrim((string) $filesBase, '/') . '/' . $normalized;
         }
 
@@ -3014,6 +3026,49 @@ if (!function_exists('create_invoice_from_order')) {
 }
 
 /**
+ * On local/dev, rewrite production file/app URLs in stored HTML so the browser
+ * does not wait ~30s for unreachable remote assets (and keep window.load stuck).
+ */
+if (!function_exists('localize_remote_content_urls')) {
+
+    function localize_remote_content_urls($text = "")
+    {
+        if (!$text) {
+            return $text;
+        }
+
+        $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        $is_local_host = (function_exists('is_localhost') && is_localhost())
+            || strpos($host, '127.0.0.1') !== false
+            || strpos($host, 'localhost') !== false;
+
+        if (!$is_local_host) {
+            return $text;
+        }
+
+        $local = rtrim(base_url(), '/');
+        $remotes = array_unique(array_filter(array(
+            rtrim((string) env('files.baseURL'), '/'),
+            'https://crm.prime-ltd.su',
+            'http://crm.prime-ltd.su',
+        )));
+
+        foreach ($remotes as $remote) {
+            if (!$remote || $remote === $local) {
+                continue;
+            }
+
+            // Only rewrite app/file assets that would otherwise hang the local page load.
+            $text = str_replace($remote . '/files/', $local . '/files/', $text);
+            $text = str_replace($remote . '/index.php/webhooks_listener/', $local . '/index.php/webhooks_listener/', $text);
+            $text = str_replace($remote . '/webhooks_listener/', $local . '/index.php/webhooks_listener/', $text);
+        }
+
+        return $text;
+    }
+}
+
+/**
  * add preview on pasted images for rich text editor
  * @param string $text containing text with pasted images
  * @return text with clickable images
@@ -3025,6 +3080,8 @@ if (!function_exists('process_images_from_content')) {
         if (!$text) {
             return "";
         }
+
+        $text = localize_remote_content_urls($text);
 
         if (!$add_preview) {
             //send content to hook if there has any modification

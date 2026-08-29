@@ -6,6 +6,7 @@ class Tickets extends Security_Controller {
 
     protected $Ticket_templates_model;
     protected $Pin_ticket_comments;
+    private $ticket_comments_page_size = 30;
 
     function __construct() {
         parent::__construct();
@@ -19,6 +20,82 @@ class Tickets extends Security_Controller {
         if (!$this->can_access_tickets($ticket_id)) {
             app_redirect("forbidden");
         }
+    }
+
+    private function get_comment_recipients_map($comments) {
+        if (empty($comments) || $this->login_user->user_type !== "staff") {
+            return array();
+        }
+
+        $comment_ids = array();
+        foreach ($comments as $comment) {
+            if (!empty($comment->sent_mails)) {
+                $comment_ids[] = $comment->id;
+            }
+        }
+
+        if (!$comment_ids) {
+            return array();
+        }
+
+        return $this->Ticket_mails_model->get_recipients_by_comment_ids($comment_ids);
+    }
+
+    private function get_ticket_comments_count_options($ticket_id, $sort_as_decending, $is_note = null) {
+        $options = array(
+            "ticket_id" => $ticket_id,
+            "sort_as_decending" => $sort_as_decending,
+            "login_user_id" => $this->login_user->id,
+        );
+
+        if (!is_null($is_note)) {
+            $options["is_note"] = $is_note;
+        }
+
+        return $options;
+    }
+
+    private function prepare_ticket_comments_page($ticket_id, $sort_as_decending, $is_note = null, $load_offset = null) {
+        $count_options = $this->get_ticket_comments_count_options($ticket_id, $sort_as_decending, $is_note);
+        $comments_total = $this->Ticket_comments_model->count_all($count_options);
+
+        $comments_options = $count_options;
+        $comments_has_more = false;
+        $comments_loader_offset = 0;
+
+        if ($sort_as_decending) {
+            $comments_offset = $load_offset !== null ? (int) $load_offset : 0;
+            $comments_limit = $this->ticket_comments_page_size;
+            $comments_loader_offset = $comments_offset + $comments_limit;
+            $comments_has_more = $comments_loader_offset < $comments_total;
+        } else {
+            if ($load_offset !== null) {
+                $comments_offset = max(0, (int) $load_offset - $this->ticket_comments_page_size);
+                $comments_limit = min($this->ticket_comments_page_size, (int) $load_offset - $comments_offset);
+            } else {
+                $comments_offset = max(0, $comments_total - $this->ticket_comments_page_size);
+                $comments_limit = min($this->ticket_comments_page_size, $comments_total - $comments_offset);
+            }
+
+            $comments_loader_offset = $comments_offset;
+            $comments_has_more = $comments_offset > 0;
+        }
+
+        $comments_options["limit"] = $comments_limit;
+        $comments_options["offset"] = $comments_offset;
+
+        $comments = $this->Ticket_comments_model->get_details($comments_options)->getResult();
+
+        return array(
+            "comments" => $comments,
+            "comments_total" => $comments_total,
+            "comments_has_more" => $comments_has_more,
+            "comments_loader_offset" => $comments_loader_offset,
+            "comments_offset" => $comments_offset,
+            "comment_recipients" => $this->get_comment_recipients_map($comments),
+            "sort_as_decending" => $sort_as_decending,
+            "ticket_id" => $ticket_id,
+        );
     }
 
     private function _validate_tickets_report_access() {
@@ -341,6 +418,169 @@ class Tickets extends Security_Controller {
         echo json_encode($result);
     }
 
+    function inbox_list_data() {
+        $this->access_only_allowed_members();
+
+        $skip = (int) $this->request->getPost("skip");
+        $limit = (int) $this->request->getPost("limit");
+        if ($limit <= 0 || $limit > 50) {
+            $limit = 30;
+        }
+
+        $options = array(
+            "status" => $this->request->getPost("status") ?: "open",
+            "ticket_types" => $this->allowed_ticket_types,
+            "ticket_labels" => $this->request->getPost("ticket_label"),
+            "deadline" => $this->request->getPost('deadline'),
+            "assigned_to" => $this->request->getPost("assigned_to"),
+            "created_at" => $this->request->getPost('created_at'),
+            "ticket_type_ids" => $this->request->getPost('ticket_type_id'),
+            "show_assigned_tickets_only_user_id" => $this->show_assigned_tickets_only_user_id(),
+            "client_id" => $this->request->getPost('client_id'),
+            "search_by" => trim($this->request->getPost("search_by")),
+            "include_last_comment_preview" => true,
+            "order_by" => "last_activity",
+            "order_dir" => "DESC",
+            "limit" => $limit,
+            "skip" => $skip,
+        );
+
+        $result = $this->Tickets_model->get_details($options);
+        $list_data = get_array_value($result, "data");
+        if (!$list_data) {
+            $list_data = array();
+        }
+
+        $items = array();
+
+        foreach ($list_data as $data) {
+            $items[] = $this->_make_inbox_item($data);
+        }
+
+        $payload = array(
+            "success" => true,
+            "data" => $items,
+            "recordsTotal" => (int) get_array_value($result, "recordsTotal"),
+            "hasMore" => ($skip + count($items)) < (int) get_array_value($result, "recordsTotal"),
+        );
+
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($json === false) {
+            echo json_encode(array(
+                "success" => false,
+                "message" => "Failed to encode inbox list",
+            ));
+            return;
+        }
+
+        echo $json;
+    }
+
+    private function _sanitize_json_string($value) {
+        if ($value === null || $value === "") {
+            return "";
+        }
+
+        $value = (string) $value;
+
+        if (function_exists("mb_convert_encoding")) {
+            $value = mb_convert_encoding($value, "UTF-8", "UTF-8");
+        } else if (function_exists("iconv")) {
+            $value = iconv("UTF-8", "UTF-8//IGNORE", $value);
+        }
+
+        return $value;
+    }
+
+    private function _ticket_inbox_time_label($datetime) {
+        if (!$datetime) {
+            return "";
+        }
+
+        $ts = strtotime($datetime);
+        if (!$ts) {
+            return "";
+        }
+
+        $today = strtotime("today");
+        $yesterday = strtotime("yesterday");
+
+        if ($ts >= $today) {
+            return date("H:i", $ts);
+        }
+
+        if ($ts >= $yesterday) {
+            return "Вчера";
+        }
+
+        if ($ts >= strtotime("-6 days", $today)) {
+            $days = array("Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб");
+            return $days[(int) date("w", $ts)];
+        }
+
+        return date("d.m.Y", $ts);
+    }
+
+    private function _make_inbox_item($data) {
+        $status = $data->status;
+        if ($status === "client_replied" && $this->login_user->user_type === "client") {
+            $status = "open";
+        }
+
+        $client_name = $data->company_name;
+        if (!$client_name) {
+            $client_name = trim($data->creator_name ?: $data->creator_email ?: "");
+            if ($client_name) {
+                $client_name .= " [" . app_lang("unknown_client") . "]";
+            } else {
+                $client_name = app_lang("unknown_client");
+            }
+        }
+
+        $preview = "";
+        if (!empty($data->last_comment_preview)) {
+            $preview = trim(preg_replace('/\s+/u', ' ', strip_tags($data->last_comment_preview)));
+            if (function_exists('mb_strlen') && mb_strlen($preview) > 140) {
+                $preview = mb_substr($preview, 0, 137) . "...";
+            } else if (strlen($preview) > 140) {
+                $preview = substr($preview, 0, 137) . "...";
+            }
+        }
+
+        $avatar_url = "";
+        $avatar_initial = "";
+        if (!empty($data->assigned_to_avatar)) {
+            $avatar_url = get_avatar($data->assigned_to_avatar);
+        } else {
+            $source = $client_name ?: ($data->title ?: "T");
+            if (function_exists('mb_substr')) {
+                $avatar_initial = mb_strtoupper(mb_substr($source, 0, 1));
+            } else {
+                $avatar_initial = strtoupper(substr($source, 0, 1));
+            }
+        }
+
+        $project_title = $data->project_title ?: "";
+
+        return array(
+            "id" => (int) $data->id,
+            "ticket_id" => get_ticket_id($data->id),
+            "title" => $this->_sanitize_json_string($data->title),
+            "client_name" => $this->_sanitize_json_string($client_name),
+            "client_id" => (int) $data->client_id,
+            "project_title" => $this->_sanitize_json_string($project_title),
+            "ticket_type" => $this->_sanitize_json_string($data->ticket_type ?: ""),
+            "status" => $status,
+            "status_label" => $this->_sanitize_json_string(app_lang($status)),
+            "last_activity_at" => $data->last_activity_at,
+            "time_label" => $this->_ticket_inbox_time_label($data->last_activity_at),
+            "preview" => $this->_sanitize_json_string($preview),
+            "avatar_url" => $avatar_url,
+            "avatar_initial" => $this->_sanitize_json_string($avatar_initial),
+            "is_unread" => in_array($data->status, array("new", "client_replied")),
+        );
+    }
+
     // list of tickets of a specific client, prepared for datatable
     function ticket_list_data_of_client($client_id, $is_widget = 0) {
         validate_numeric_value($client_id);
@@ -407,7 +647,7 @@ class Tickets extends Security_Controller {
 
         $ticket_status = "<span class='badge $ticket_status_class large'>" . app_lang($data->status) . "</span> ";
 
-        $title = anchor(get_uri("tickets/view/" . $data->id), $data->title);
+        $title = anchor(get_uri("tickets/view/" . $data->id), $data->title, array("class" => "js-ticket-open-panel", "data-id" => $data->id));
 
         //show labels fild to team members only
         $ticket_labels = make_labels_view_data($data->labels_list, true);
@@ -435,9 +675,13 @@ class Tickets extends Security_Controller {
             }
         }
 
+        // ID + title + row click → inbox panel (screen 1).
+        // Full page (screen 2) opens only via the dedicated action button.
+        $ticket_id_link = anchor(get_uri("tickets/view/" . $data->id), get_ticket_id($data->id), array("class" => "js-ticket js-ticket-open-panel", "data-id" => $data->id, "title" => ""));
+
         $row_data = array(
             $data->id,
-            anchor(get_uri("tickets/view/" . $data->id), get_ticket_id($data->id), array("class" => "js-ticket", "data-id" => $data->id, "title" => "")),
+            $ticket_id_link,
             $title,
             $data->company_name ? anchor(get_uri("clients/view/" . $data->client_id), $data->company_name) : ($data->creator_name . " [" . app_lang("unknown_client") . "]"),
             $data->project_title ? anchor(get_uri("projects/view/" . $data->project_id), $data->project_title) : "-",
@@ -486,9 +730,14 @@ class Tickets extends Security_Controller {
                             <ul class="dropdown-menu dropdown-menu-end" role="menu">' . $edit . $status . $assigned_to . $delete_ticket . '</ul>
                         </span>';
 
-            $modal_view = modal_anchor(get_uri("tickets/view"), "<i data-feather='tablet' class='icon-16'></i>", array("class" => "action-option", "title" => app_lang('ticket_info') . " #$data->id", "data-post-id" => $data->id, "data-post-view_type" => "modal_view", "data-modal-fullscreen" => "1", "data-modal-custom-bg" => "1"));
+            // Dedicated button for full-page ticket view (screen 2).
+            $full_view = anchor(
+                get_uri("tickets/view/" . $data->id),
+                "<i data-feather='maximize-2' class='icon-16'></i>",
+                array("class" => "action-option", "title" => "Открыть полную заявку")
+            );
 
-            $row_data[] = $modal_view . $actions;
+            $row_data[] = '<div class="ticket-row-actions">' . $full_view . $actions . '</div>';
         }
 
 
@@ -529,17 +778,13 @@ class Tickets extends Security_Controller {
 
                 $view_data['ticket_info'] = $ticket_info;
 
-                $comments_options = array(
-                    "ticket_id" => $ticket_id,
-                    "sort_as_decending" => $sort_as_decending,
-                    "login_user_id" => $this->login_user->id
-                );
-
+                $is_note = null;
                 if ($this->login_user->user_type === "client") {
-                    $comments_options["is_note"] = 0;
+                    $is_note = 0;
                 }
 
-                $view_data['comments'] = $this->Ticket_comments_model->get_details($comments_options)->getResult();
+                $comments_page = $this->prepare_ticket_comments_page($ticket_id, $sort_as_decending, $is_note);
+                $view_data = array_merge($view_data, $comments_page);
 
                 $view_data['custom_fields_list'] = $this->Custom_fields_model->get_combined_details("tickets", $ticket_info->id, $this->login_user->is_admin, $this->login_user->user_type)->getResult();
 
@@ -556,7 +801,7 @@ class Tickets extends Security_Controller {
                     $view_data["can_create_client"] = true;
                 }
 
-                if ($view_type == "modal_view") {
+                if ($view_type == "modal_view" || $view_type == "panel_view") {
                     return $this->template->view("tickets/view", $view_data);
                 } else {
                     return $this->template->rander("tickets/view", $view_data);
@@ -565,6 +810,23 @@ class Tickets extends Security_Controller {
                 show_404();
             }
         }
+    }
+
+    function load_more_comments($ticket_id = 0, $offset = 0) {
+        validate_numeric_value($ticket_id);
+        validate_numeric_value($offset);
+
+        $this->validate_ticket_access($ticket_id);
+
+        $sort_as_decending = get_setting("show_recent_ticket_comments_at_the_top");
+        $is_note = null;
+        if ($this->login_user->user_type === "client") {
+            $is_note = 0;
+        }
+
+        $view_data = $this->prepare_ticket_comments_page($ticket_id, $sort_as_decending, $is_note, $offset);
+
+        return $this->template->view("tickets/comments_load_more_data", $view_data);
     }
 
     function update_ticket_info($id = 0, $data_field = "") {
@@ -679,6 +941,8 @@ class Tickets extends Security_Controller {
                 "login_user_id" => $this->login_user->id,
             );
             $view_data['comment'] = $this->Ticket_comments_model->get_details($comments_options)->getRow();
+            $recipients_map = $this->get_comment_recipients_map(array($view_data['comment']));
+            $view_data['comment_recipients'] = get_array_value($recipients_map, $view_data['comment']->id) ?: array();
             $comment_view = $this->template->view("tickets/comment_row", $view_data);
 
             echo json_encode(array("success" => true, "data" => $comment_view, 'message' => app_lang('comment_submited')));
@@ -1184,28 +1448,38 @@ class Tickets extends Security_Controller {
     }
 
     function mail_ticket_modal_form() {
-        $ticket_comment_id = $this->request->getPost('ticket_comment_id');
-        $this->validate_ticket_access($ticket_comment_id);
+        $ticket_comment_id = (int) $this->request->getPost('ticket_comment_id');
+        if (!$ticket_comment_id) {
+            show_404();
+        }
 
-        $ticket_mails = $this->Ticket_mails_model->get_all_where(["ticket_comment_id" => $ticket_comment_id])->getResult();
+        $comment_info = $this->Ticket_comments_model->get_one($ticket_comment_id);
+        if (!$comment_info || !$comment_info->id || empty($comment_info->ticket_id)) {
+            show_404();
+        }
 
-        $view_data = [];
+        $this->validate_ticket_access($comment_info->ticket_id);
 
+        $ticket_mails = $this->Ticket_mails_model->get_all_where(array("ticket_comment_id" => $ticket_comment_id))->getResult();
+        $view_data = array("mails" => array());
         $email_smtp_host = get_setting('email_smtp_user');
-        
+
         foreach ($ticket_mails as $mail) {
             $from = $this->Users_model->get_one($mail->from_user_id);
             $to = $this->Users_model->get_one($mail->to_user_id);
 
-            $view_data["mails"][] = [
-                "user_from_link" => get_profile_link_by_type($from->user_type, $from->id, $from->first_name . " " .$from->last_name, ["class" => "dark strong"]),
-                "user_to_link" => get_profile_link_by_type($to->user_type, $to->id, $to->first_name . " " .$to->last_name, ["class" => "dark strong"]),
+            $from_name = trim(($from->first_name ?? "") . " " . ($from->last_name ?? ""));
+            $to_name = trim(($to->first_name ?? "") . " " . ($to->last_name ?? ""));
+
+            $view_data["mails"][] = array(
+                "user_from_link" => get_profile_link_by_type($from->user_type ?? "", $from->id ?? 0, $from_name ?: "-", array("class" => "dark strong")),
+                "user_to_link" => get_profile_link_by_type($to->user_type ?? "", $to->id ?? 0, $to_name ?: "-", array("class" => "dark strong")),
                 "user_from_email" => $email_smtp_host,
-                "user_to_email" => $to->email,
-                "is_primary_contact" => $to->is_primary_contact,
+                "user_to_email" => $to->email ?? "-",
+                "is_primary_contact" => !empty($to->is_primary_contact),
                 "sent_at" => format_to_relative_time($mail->created_at),
                 "read_at" => $mail->read_at ? format_to_relative_time($mail->read_at) : " - ",
-            ];
+            );
         }
 
         return $this->template->view('tickets/mail_ticket_modal_form', $view_data);

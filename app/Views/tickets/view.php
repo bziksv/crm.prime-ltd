@@ -1,6 +1,28 @@
 <?php $user_id = $login_user->id; ?>
+<?php $is_embedded_view = ($view_type == "modal_view" || $view_type == "panel_view"); ?>
+<?php if ($view_type != "panel_view") { ?>
+<link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-panel.css?v=20260828r'); ?>">
+<script>
+// Don't keep the spinner forever if remote assets hang on local.
+setTimeout(function () {
+    var $loader = $('#pre-loader');
+    if ($loader.length) {
+        $loader.stop(true, true).fadeOut(200, function () { $loader.remove(); });
+    }
+}, 2500);
 
-<?php if ($view_type != "modal_view") { ?>
+// Ensure ticket view starts at the top (mask scroll, not window).
+$(function () {
+    var mask = document.getElementById('left-menu-toggle-mask');
+    if (mask) {
+        mask.scrollTop = 0;
+    }
+    window.scrollTo(0, 0);
+});
+</script>
+<?php } ?>
+
+<?php if (!$is_embedded_view) { ?>
     <div class="page-content ticket-details-view clearfix">
         <div class="container-fluid">
             <div class="row">
@@ -13,6 +35,9 @@
                             </h1>
 
                             <div class="title-button-group mr0">
+                                <a href="<?php echo get_uri("tickets") . "?ticket=" . $ticket_info->id; ?>" class="btn btn-default" title="Режим списка с панелью">
+                                    <i data-feather="columns" class="icon-16"></i> Режим списка
+                                </a>
                                 <span class="dropdown inline-block">
                                     <button class="btn btn-info text-white dropdown-toggle caret" type="button" data-bs-toggle="dropdown" aria-expanded="true">
                                         <i data-feather="tool" class="icon-16"></i> <?php echo app_lang('actions'); ?>
@@ -65,6 +90,108 @@
 
                 </div>
             </div>
+        </div>
+    </div>
+<?php } else if ($view_type == "panel_view") { ?>
+    <div class="ticket-panel-view clearfix general-form">
+        <div class="ticket-panel-view-header">
+            <div class="ticket-panel-view-heading">
+                <div class="ticket-panel-view-meta text-muted mb5">
+                    <?php if ($ticket_info->company_name) { ?>
+                        <?php echo esc($ticket_info->company_name); ?> ·
+                    <?php } ?>
+                    <span class="ticket-panel-view-status"><?php echo app_lang($ticket_info->status); ?></span>
+                </div>
+                <div class="ticket-panel-view-title text-break">
+                    <?php echo esc($ticket_info->title); ?>
+                </div>
+            </div>
+            <div class="ticket-panel-view-toolbar">
+                <a href="<?php echo get_uri("tickets/view/" . $ticket_info->id); ?>" class="btn btn-default btn-sm" title="Открыть полную заявку">
+                    <i data-feather="external-link" class="icon-16"></i>
+                </a>
+                <button type="button" class="btn btn-default btn-sm js-ticket-panel-close" title="<?php echo app_lang('close'); ?>">
+                    <i data-feather="x" class="icon-16"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="ticket-panel-view-body">
+            <div class="ticket-panel-columns">
+                <div class="ticket-panel-main">
+                    <?php if ($login_user->user_type === "staff") { ?>
+                        <ul id="ticket-tabs" data-bs-toggle="ajax-tab" class="nav nav-pills rounded classic mb10 scrollable-tabs border-white" role="tablist">
+                            <li><a role="presentation" data-bs-toggle="tab" class="active" href="javascript:;" data-bs-target="#ticket-details-section"><?php echo app_lang("details"); ?></a></li>
+                            <li><a role="presentation" data-bs-toggle="tab" href="<?php echo_uri("tickets/tasks/" . $ticket_info->id); ?>" data-bs-target="#ticket-tasks-section"><?php echo app_lang('tasks'); ?></a></li>
+                        </ul>
+                        <div class="tab-content">
+                            <div role="tabpanel" class="tab-pane fade active show" id="ticket-details-section">
+                                <div id="subscription-item-section">
+                                    <?php echo view("tickets/view_data"); ?>
+                                </div>
+                            </div>
+                            <div role="tabpanel" class="tab-pane fade grid-button" id="ticket-tasks-section"></div>
+                        </div>
+                    <?php } else { ?>
+                        <div id="subscription-item-section">
+                            <?php echo view("tickets/view_data"); ?>
+                        </div>
+                    <?php } ?>
+                </div>
+
+                <aside class="ticket-panel-aside">
+                    <?php if ($login_user->user_type == "staff") { ?>
+                        <div class="ticket-panel-aside-actions">
+                            <div class="dropdown w-100">
+                                <button class="btn btn-info btn-sm text-white dropdown-toggle caret w-100" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
+                                    <i data-feather="tool" class="icon-16"></i> <?php echo app_lang('actions'); ?>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" role="menu">
+                                    <li role="presentation"><?php echo modal_anchor(get_uri("tickets/modal_form"), "<i data-feather='edit-2' class='icon-16'></i> " . app_lang('edit'), array("title" => app_lang('ticket'), "data-post-view" => "details", "data-post-id" => $ticket_info->id, "class" => "dropdown-item")); ?></li>
+                                    <?php if ($can_create_tasks && !$ticket_info->task_id) { ?>
+                                        <li role="presentation"><?php echo modal_anchor(get_uri("tasks/modal_form"), "<i data-feather='plus-circle' class='icon-16'></i> " . app_lang('add_task_in_project'), array("title" => app_lang('create_new_task'), "data-post-project_id" => $ticket_info->project_id, "data-post-ticket_id" => $ticket_info->id, "class" => "dropdown-item")); ?></li>
+                                    <?php } ?>
+                                    <li role="presentation"><?php echo modal_anchor(get_uri("tickets/merge_ticket_modal_form"), "<i data-feather='git-merge' class='icon-16'></i> " . app_lang('merge'), array("title" => app_lang('merge'), "data-post-ticket_id" => $ticket_info->id, "class" => "dropdown-item")); ?></li>
+                                    <?php if ($ticket_info->status === "closed") { ?>
+                                        <li role="presentation"><?php echo ajax_anchor(get_uri("tickets/save_ticket_status/$ticket_info->id/open"), "<i data-feather='check-circle' class='icon-16'></i> " . app_lang('mark_as_open'), array("class" => "dropdown-item", "title" => app_lang('mark_as_open'), "data-reload-on-success" => "1")); ?></li>
+                                    <?php } else { ?>
+                                        <li role="presentation"><?php echo ajax_anchor(get_uri("tickets/save_ticket_status/$ticket_info->id/closed"), "<i data-feather='check-circle' class='icon-16'></i> " . app_lang('mark_as_closed'), array("class" => "dropdown-item", "title" => app_lang('mark_as_closed'), "data-reload-on-success" => "1")); ?></li>
+                                    <?php } ?>
+                                    <?php if ($ticket_info->assigned_to === "0") { ?>
+                                        <li role="presentation"><?php echo ajax_anchor(get_uri("tickets/assign_to_me/$ticket_info->id"), "<i data-feather='user' class='icon-16'></i> " . app_lang('assign_to_me'), array("class" => "dropdown-item", "title" => app_lang('assign_myself_in_this_ticket'), "data-reload-on-success" => "1")); ?></li>
+                                    <?php } ?>
+                                    <?php if ($ticket_info->client_id === "0") { ?>
+                                        <?php if ($can_create_client) { ?>
+                                            <li role="presentation"><?php echo modal_anchor(get_uri("clients/modal_form"), "<i data-feather='plus' class='icon-16'></i> " . app_lang('link_to_new_client'), array("title" => app_lang('link_to_new_client'), "data-post-ticket_id" => $ticket_info->id, "class" => "dropdown-item")); ?></li>
+                                        <?php } ?>
+                                        <li role="presentation"><?php echo modal_anchor(get_uri("tickets/add_client_modal_form/$ticket_info->id"), "<i data-feather='link' class='icon-16'></i> " . app_lang('link_to_existing_client'), array("title" => app_lang('link_to_existing_client'), "class" => "dropdown-item")); ?></li>
+                                    <?php } ?>
+                                </ul>
+                            </div>
+                        </div>
+                    <?php } ?>
+                    <div class="ticket-panel-aside-scroll">
+                        <?php echo view("tickets/ticket_info_section"); ?>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <div class="ticket-panel-view-footer">
+            <?php if ($ticket_info->assigned_to === "0" && $login_user->user_type == "staff") { ?>
+                <?php echo ajax_anchor(get_uri("tickets/assign_to_me/$ticket_info->id"), "<i data-feather='user' class='icon-16'></i> " . app_lang('assign_to_me'), array("class" => "btn btn-info btn-sm text-white", "title" => app_lang('assign_myself_in_this_ticket'), "data-reload-on-success" => "1")); ?>
+            <?php } ?>
+            <?php if ($ticket_info->status === "closed") { ?>
+                <?php echo ajax_anchor(get_uri("tickets/save_ticket_status/$ticket_info->id/open"), "<i data-feather='check-circle' class='icon-16'></i> " . app_lang('mark_as_open'), array("class" => "btn btn-danger btn-sm", "title" => app_lang('mark_as_open'), "data-reload-on-success" => "1")); ?>
+            <?php } else { ?>
+                <?php echo ajax_anchor(get_uri("tickets/save_ticket_status/$ticket_info->id/closed"), "<i data-feather='check-circle' class='icon-16'></i> " . app_lang('mark_as_closed'), array("class" => "btn btn-success btn-sm", "title" => app_lang('mark_as_closed'), "data-reload-on-success" => "1")); ?>
+            <?php } ?>
+            <?php if ($login_user->user_type == "staff") { ?>
+                <?php if ($can_create_tasks && !$ticket_info->task_id) { ?>
+                    <?php echo modal_anchor(get_uri("tasks/modal_form"), "<i data-feather='plus-circle' class='icon-16'></i> " . app_lang('create_new_task'), array("title" => app_lang('create_new_task'), "data-post-project_id" => $ticket_info->project_id, "data-post-ticket_id" => $ticket_info->id, "class" => "btn btn-default btn-sm")); ?>
+                <?php } ?>
+                <?php echo modal_anchor(get_uri("tickets/modal_form"), "<i data-feather='edit-2' class='icon-16'></i> " . app_lang('edit'), array("title" => app_lang('ticket'), "data-post-view" => "details", "data-post-id" => $ticket_info->id, "class" => "btn btn-default btn-sm")); ?>
+            <?php } ?>
         </div>
     </div>
 <?php } else { ?>

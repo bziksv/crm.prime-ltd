@@ -104,6 +104,12 @@ class Tickets_model extends Crud_model {
 
         $select_labels_data_query = $this->get_labels_data_query();
 
+        $last_comment_select = "";
+        if ($this->_get_clean_value($options, "include_last_comment_preview")) {
+            $ticket_comments_table = $this->db->prefixTable('ticket_comments');
+            $last_comment_select = ", (SELECT tc.description FROM $ticket_comments_table tc WHERE tc.ticket_id=$tickets_table.id AND tc.deleted=0 ORDER BY tc.id DESC LIMIT 1) AS last_comment_preview";
+        }
+
         $last_activity_date_or_before = $this->_get_clean_value($options, "last_activity_date_or_before");
         if ($last_activity_date_or_before) {
             $where .= " AND ($tickets_table.last_activity_at IS NOT NULL AND DATE($tickets_table.last_activity_at)<='$last_activity_date_or_before')";
@@ -149,25 +155,14 @@ class Tickets_model extends Crud_model {
 
         $search_by = get_array_value($options, "search_by");
         if ($search_by) {
-            $search_by = $this->db->escapeLikeString($search_by);
             $labels_table = $this->db->prefixTable("labels");
-
-            $where .= " AND (";
-            $where .= " $tickets_table.id LIKE '%$search_by%' ESCAPE '!' ";
-            $where .= " OR $tickets_table.title LIKE '%$search_by%' ESCAPE '!' ";
-            $where .= " OR $clients_table.company_name LIKE '%$search_by%' ESCAPE '!' ";
-            $where .= " OR $project_table.title LIKE '%$search_by%' ESCAPE '!' ";
-            $where .= " OR $ticket_types_table.title LIKE '%$search_by%' ESCAPE '!' ";
-            $where .= " OR CONCAT(assigned_table.first_name, ' ',assigned_table.last_name) LIKE '%$search_by%' ESCAPE '!' ";
-            $where .= " OR (SELECT GROUP_CONCAT($labels_table.title, ', ') FROM $labels_table WHERE FIND_IN_SET($labels_table.id, $tickets_table.labels)) LIKE '%$search_by%' ESCAPE '!' ";
-            $where .= $this->get_custom_field_search_query($tickets_table, "tickets", $search_by);
-            $where .= " )";
+            $where .= $this->prepare_tickets_search_where($search_by, $tickets_table, $ticket_types_table, $clients_table, $project_table, $task_table, $labels_table);
         }
 
 
 
         $sql = "SELECT SQL_CALC_FOUND_ROWS $tickets_table.*, $ticket_types_table.title AS ticket_type, $clients_table.company_name, $project_table.title AS project_title, $task_table.title AS task_title,
-              CONCAT(assigned_table.first_name, ' ',assigned_table.last_name) AS assigned_to_user, assigned_table.image as assigned_to_avatar, $select_labels_data_query $select_custom_fieds,
+              CONCAT(assigned_table.first_name, ' ',assigned_table.last_name) AS assigned_to_user, assigned_table.image as assigned_to_avatar, $select_labels_data_query $select_custom_fieds $last_comment_select,
               CONCAT(requested_table.first_name, ' ',requested_table.last_name) AS requested_by_name
         FROM $tickets_table
         LEFT JOIN $ticket_types_table ON $ticket_types_table.id= $tickets_table.ticket_type_id
@@ -358,5 +353,59 @@ class Tickets_model extends Crud_model {
         }
 
         return $this->db->query($sql);
+    }
+
+    private function prepare_tickets_search_where($search_by, $tickets_table, $ticket_types_table, $clients_table, $project_table, $task_table, $labels_table) {
+        $search_by = trim((string) $search_by);
+        if (!$search_by) {
+            return "";
+        }
+
+        $tokens = preg_split('/\s+/u', $search_by, -1, PREG_SPLIT_NO_EMPTY);
+        if (!$tokens) {
+            return "";
+        }
+
+        $ticket_comments_table = $this->db->prefixTable('ticket_comments');
+        $where = "";
+
+        foreach ($tokens as $token) {
+            $token = trim($token);
+            $token_length = function_exists("mb_strlen") ? mb_strlen($token) : strlen($token);
+
+            if ($token === "" || $token_length < 2) {
+                continue;
+            }
+
+            $like_token = $this->db->escapeLikeString($token);
+            $id_token = $like_token;
+
+            if (strpos($token, '#') === 0) {
+                $id_token = $this->db->escapeLikeString(ltrim($token, '#'));
+            }
+
+            $where .= " AND (";
+            $where .= " $tickets_table.id LIKE '%$id_token%' ESCAPE '!' ";
+            $where .= " OR $tickets_table.title LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR $tickets_table.creator_name LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR $tickets_table.creator_email LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR $clients_table.company_name LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR $project_table.title LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR $task_table.title LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR $ticket_types_table.title LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR CONCAT(assigned_table.first_name, ' ', assigned_table.last_name) LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR assigned_table.first_name LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR assigned_table.last_name LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR assigned_table.email LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR CONCAT(requested_table.first_name, ' ', requested_table.last_name) LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR requested_table.first_name LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR requested_table.last_name LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR (SELECT GROUP_CONCAT($labels_table.title, ', ') FROM $labels_table WHERE FIND_IN_SET($labels_table.id, $tickets_table.labels)) LIKE '%$like_token%' ESCAPE '!' ";
+            $where .= " OR EXISTS (SELECT 1 FROM $ticket_comments_table tc WHERE tc.ticket_id=$tickets_table.id AND tc.deleted=0 AND tc.description LIKE '%$like_token%' ESCAPE '!') ";
+            $where .= $this->get_custom_field_search_query($tickets_table, "tickets", $like_token);
+            $where .= " )";
+        }
+
+        return $where;
     }
 }
