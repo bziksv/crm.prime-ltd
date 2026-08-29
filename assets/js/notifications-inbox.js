@@ -596,9 +596,20 @@
         });
 
         $(document).on("keydown", function (event) {
-            if (event.key === "Escape" && activeNotificationId) {
-                closeNotificationPanel();
+            if (event.key !== "Escape" || !activeNotificationId) {
+                return;
             }
+            // Let image lightbox / modals handle Esc first (Magnific uses keyup)
+            if ($(".mfp-ready, .mfp-wrap").length) {
+                return;
+            }
+            if ($.magnificPopup && $.magnificPopup.instance && $.magnificPopup.instance.isOpen) {
+                return;
+            }
+            if ($(".modal.show").length) {
+                return;
+            }
+            closeNotificationPanel();
         });
     }
 

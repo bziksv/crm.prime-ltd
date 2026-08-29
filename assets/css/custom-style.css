@@ -3207,3 +3207,12 @@ a.pm-file-row-main:hover .pm-file-name {
 .outbound-proxy-page .table td {
     vertical-align: middle;
 }
+
+/* Floating chat button: sit above panel footer actions */
+.init-chat-icon {
+    bottom: 52px;
+}
+
+.rise-chat-wrapper {
+    bottom: 52px;
+}
