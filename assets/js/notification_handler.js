@@ -127,21 +127,8 @@ checkNotifications = function (params, updateStatus) {
                     }
                 }
             },
-            error: function (xhr) {
-                // Keep polling even after CSRF/session blips; otherwise the tab goes "dead"
-                // after ~session timeToUpdate and UI AJAX starts failing until full reload.
-                if (xhr && (xhr.status === 401 || xhr.status === 403)) {
-                    if (!window._primeSessionReloadScheduled) {
-                        window._primeSessionReloadScheduled = true;
-                        window.location.reload();
-                    }
-                    return;
-                }
-
-                if (typeof window.primeSyncCsrf === "function") {
-                    window.primeSyncCsrf();
-                }
-
+            error: function () {
+                // Keep polling after transient errors (do NOT reload — that caused infinite refresh loops).
                 if (!updateStatus) {
                     var check_notification_after_every = params.checkNotificationAfterEvery;
                     check_notification_after_every = check_notification_after_every * 1000;

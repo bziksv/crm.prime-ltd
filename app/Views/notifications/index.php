@@ -135,14 +135,14 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="<?php echo base_url('assets/css/notifications-inbox.css?v=20260830b'); ?>">
+<link rel="stylesheet" href="<?php echo base_url('assets/css/notifications-inbox.css?v=20260830c'); ?>">
 <link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-panel.css?v=20260828r'); ?>">
 <script type="text/javascript">
     window.notificationInboxListUrl = "<?php echo get_uri('notifications/inbox_list_data'); ?>";
     window.notificationPanelUrl = "<?php echo get_uri('notifications/view_panel'); ?>";
     window.notificationInboxFilters = <?php echo json_encode($inbox_filters ?: new stdClass()); ?>;
 </script>
-<script src="<?php echo base_url('assets/js/notifications-inbox.js?v=20260830b'); ?>"></script>
+<script src="<?php echo base_url('assets/js/notifications-inbox.js?v=20260830d'); ?>"></script>
 
 <script>
     $(document).ready(function () {

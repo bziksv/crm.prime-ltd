@@ -847,6 +847,11 @@ body:has(.notifications-list-page) .select2-drop {
     line-height: 1.35;
 }
 
+/* Title already shown in panel header — hide duplicate from task_view_data */
+.task-panel-view .task-title-left {
+    display: none !important;
+}
+
 .task-panel-view-meta {
     font-size: 12px;
 }

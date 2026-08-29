@@ -354,8 +354,11 @@
     }
 
     function syncCsrf() {
-        if (typeof window.primeSyncCsrf === "function") {
-            window.primeSyncCsrf();
+        // Keep using the page-rendered CSRF hash; cookie is HttpOnly and must not overwrite it.
+        if (AppHelper.csrfTokenName && AppHelper.csrfHash) {
+            var data = {};
+            data[AppHelper.csrfTokenName] = AppHelper.csrfHash;
+            $.ajaxSetup({ data: data });
         }
     }
 
@@ -380,10 +383,7 @@
 
     function renderPanelHtml(response) {
         if (responseLooksLikeAppShell(response)) {
-            if (!window._primeSessionReloadScheduled) {
-                window._primeSessionReloadScheduled = true;
-                window.location.reload();
-            }
+            showPanelLoadError(activeNotificationId);
             return false;
         }
         getDetailBody().html(response);
@@ -497,10 +497,7 @@
             data: { id: notificationId },
             success: function (response) {
                 if (responseLooksLikeAppShell(response)) {
-                    if (!window._primeSessionReloadScheduled) {
-                        window._primeSessionReloadScheduled = true;
-                        window.location.reload();
-                    }
+                    showPanelLoadError(notificationId);
                     return;
                 }
 
