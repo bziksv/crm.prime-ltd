@@ -126,6 +126,36 @@ checkNotifications = function (params, updateStatus) {
                         }, check_notification_after_every);
                     }
                 }
+            },
+            error: function (xhr) {
+                // Keep polling even after CSRF/session blips; otherwise the tab goes "dead"
+                // after ~session timeToUpdate and UI AJAX starts failing until full reload.
+                if (xhr && (xhr.status === 401 || xhr.status === 403)) {
+                    if (!window._primeSessionReloadScheduled) {
+                        window._primeSessionReloadScheduled = true;
+                        window.location.reload();
+                    }
+                    return;
+                }
+
+                if (typeof window.primeSyncCsrf === "function") {
+                    window.primeSyncCsrf();
+                }
+
+                if (!updateStatus) {
+                    var check_notification_after_every = params.checkNotificationAfterEvery;
+                    check_notification_after_every = check_notification_after_every * 1000;
+                    if (check_notification_after_every < 10000) {
+                        check_notification_after_every = 10000;
+                    }
+                    if (params.isMessageNotification) {
+                        check_notification_after_every = 5000;
+                    }
+                    setTimeout(function () {
+                        params.showPushNotification = true;
+                        checkNotifications(params);
+                    }, check_notification_after_every);
+                }
             }
         });
     }

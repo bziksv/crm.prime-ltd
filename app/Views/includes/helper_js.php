@@ -87,6 +87,7 @@ $custom_filters = unserialize($custom_filters);
 
     AppHelper.csrfTokenName = "<?php echo $csrf_token_name; ?>";
     AppHelper.csrfHash = "<?php echo $csrf_hash; ?>";
+    AppHelper.csrfCookieName = "<?php echo config('Security')->cookieName ?? 'rise_csrf_cookie'; ?>";
 
     AppHelper.settings.defaultThemeColor = "<?php echo get_setting("default_theme_color"); ?>";
 

@@ -212,6 +212,7 @@
         }
 
         setLoading(true);
+        syncCsrf();
 
         if (listXhr && listXhr.readyState !== 4) {
             listXhr.abort();
@@ -349,16 +350,55 @@
         });
     }
 
-    function openNotification(notificationId, ticketId, taskId) {
+    function syncCsrf() {
+        if (typeof window.primeSyncCsrf === "function") {
+            window.primeSyncCsrf();
+        }
+    }
+
+    function responseLooksLikeAppShell(html) {
+        if (typeof html !== "string" || !html) {
+            return false;
+        }
+        return /<html[\s>]/i.test(html)
+            || /id=["']left-menu-toggle-mask["']/i.test(html)
+            || /name=["']email["'][^>]*signin|signin.*name=["']email["']/i.test(html)
+            || /Войти в систему/i.test(html);
+    }
+
+    function showPanelLoadError(notificationId) {
+        getDetailBody().html(
+            '<div class="notification-panel-placeholder">' +
+                'Не удалось загрузить уведомление. ' +
+                '<button type="button" class="btn btn-default btn-sm js-notification-panel-retry" data-id="' + notificationId + '">Повторить</button>' +
+            '</div>'
+        );
+    }
+
+    function renderPanelHtml(response) {
+        if (responseLooksLikeAppShell(response)) {
+            if (!window._primeSessionReloadScheduled) {
+                window._primeSessionReloadScheduled = true;
+                window.location.reload();
+            }
+            return false;
+        }
+        getDetailBody().html(response);
+        ensureMarkUnreadControl(getDetailBody());
+        return true;
+    }
+
+    function openNotification(notificationId, ticketId, taskId, isRetry) {
         notificationId = parseInt(notificationId, 10);
         ticketId = parseInt(ticketId, 10) || 0;
         taskId = parseInt(taskId, 10) || 0;
+        isRetry = !!isRetry;
 
         if (!notificationId) {
             return;
         }
 
-        if (activeNotificationId === notificationId && getDetailBody().children().length && !getDetailBody().find(".notification-panel-placeholder, .notification-side-panel-loading").length) {
+        if (!isRetry && activeNotificationId === notificationId && getDetailBody().children().length && !getDetailBody().find(".notification-panel-placeholder, .notification-side-panel-loading").length) {
             setActiveItem(notificationId);
             setPanelState(true);
             return;
@@ -370,10 +410,29 @@
         updateNotificationUrl(notificationId);
         showPanelLoading();
         markItemRead(notificationId);
+        syncCsrf();
 
         if (panelXhr && panelXhr.readyState !== 4) {
             panelXhr.abort();
         }
+
+        var onPanelError = function (status) {
+            if (status === "abort") {
+                return;
+            }
+            if (!isRetry) {
+                syncCsrf();
+                setTimeout(function () {
+                    openNotification(notificationId, ticketId, taskId, true);
+                }, 400);
+                return;
+            }
+            if (ticketId || taskId) {
+                loadNotificationPanel(notificationId, false, true);
+                return;
+            }
+            showPanelLoadError(notificationId);
+        };
 
         if (ticketId) {
             panelXhr = $.ajax({
@@ -384,16 +443,14 @@
                     view_type: "panel_view"
                 },
                 success: function (response) {
-                    getDetailBody().html(response);
-                    ensureMarkUnreadControl(getDetailBody());
+                    if (!renderPanelHtml(response)) {
+                        return;
+                    }
                     initEmbeddedPanelContent();
                     markNotificationReadOnServer(notificationId);
                 },
                 error: function (_, status) {
-                    if (status === "abort") {
-                        return;
-                    }
-                    loadNotificationPanel(notificationId, false);
+                    onPanelError(status);
                 }
             });
             return;
@@ -408,34 +465,42 @@
                     view_type: "panel_view"
                 },
                 success: function (response) {
-                    getDetailBody().html(response);
-                    ensureMarkUnreadControl(getDetailBody());
+                    if (!renderPanelHtml(response)) {
+                        return;
+                    }
                     initEmbeddedPanelContent();
                     markNotificationReadOnServer(notificationId);
                 },
                 error: function (_, status) {
-                    if (status === "abort") {
-                        return;
-                    }
-                    loadNotificationPanel(notificationId, false);
+                    onPanelError(status);
                 }
             });
             return;
         }
 
-        loadNotificationPanel(notificationId);
+        loadNotificationPanel(notificationId, true, isRetry);
     }
 
-    function loadNotificationPanel(notificationId, allowUpgrade) {
+    function loadNotificationPanel(notificationId, allowUpgrade, isRetry) {
         if (typeof allowUpgrade === "undefined") {
             allowUpgrade = true;
         }
+        isRetry = !!isRetry;
+        syncCsrf();
 
         panelXhr = $.ajax({
             url: window.notificationPanelUrl || (AppHelper.baseUrl + "index.php/notifications/view_panel"),
             type: "POST",
             data: { id: notificationId },
             success: function (response) {
+                if (responseLooksLikeAppShell(response)) {
+                    if (!window._primeSessionReloadScheduled) {
+                        window._primeSessionReloadScheduled = true;
+                        window.location.reload();
+                    }
+                    return;
+                }
+
                 var $parsed = $("<div>").html(response);
                 var $view = $parsed.find(".notification-panel-view").first();
                 var taskId = parseInt($view.attr("data-task-id"), 10) || 0;
@@ -444,7 +509,7 @@
                 // Prefer full task/ticket panel when notification points to one
                 if (allowUpgrade && (taskId || ticketId)) {
                     activeNotificationId = null;
-                    openNotification(notificationId, ticketId, taskId);
+                    openNotification(notificationId, ticketId, taskId, isRetry);
                     return;
                 }
 
@@ -458,7 +523,14 @@
                 if (status === "abort") {
                     return;
                 }
-                getDetailBody().html('<div class="notification-panel-placeholder">Не удалось загрузить уведомление</div>');
+                if (!isRetry) {
+                    syncCsrf();
+                    setTimeout(function () {
+                        loadNotificationPanel(notificationId, allowUpgrade, true);
+                    }, 400);
+                    return;
+                }
+                showPanelLoadError(notificationId);
             }
         });
     }
@@ -506,6 +578,22 @@
 
         $(document).on("click", ".notifications-list-page .js-notification-panel-close, .notifications-list-page .js-ticket-panel-close, .notifications-list-page .js-task-panel-close", function () {
             closeNotificationPanel();
+        });
+
+        $(document).on("click", ".notifications-list-page .js-notification-panel-retry", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            var notificationId = $(this).attr("data-id") || activeNotificationId;
+            var $item = $(".js-notification-inbox-item[data-id='" + notificationId + "']");
+            if (!$item.length) {
+                $item = $(".js-notification-inbox-item.is-active").first();
+            }
+            openNotification(
+                notificationId || $item.attr("data-id"),
+                $item.attr("data-ticket-id"),
+                $item.attr("data-task-id"),
+                true
+            );
         });
 
         $(document).on("click", ".notifications-list-page .js-notification-mark-unread", function (event) {
