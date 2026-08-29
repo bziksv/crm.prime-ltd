@@ -61,6 +61,7 @@ class Notifications extends Security_Controller {
             "team_member" => get_array_value($filters, "notification_team_members_filter"),
             "project_id" => get_array_value($filters, "notification_projects_filter"),
             "order_by" => get_array_value($filters, "notification_order_by_filter"),
+            "search_by" => trim((string) $this->request->getPost("search_by")),
         );
 
         $notifications = $this->Notifications_model->get_notifications($this->login_user->id, $skip, $limit, $options);

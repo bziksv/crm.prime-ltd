@@ -112,32 +112,43 @@ body:has(.tickets-list-page) .main-scrollable-page {
 .tickets-inbox-search {
     flex: 1 1 auto;
     position: relative;
+    display: block;
+    min-width: 0;
 }
 
 .tickets-inbox-search input {
     width: 100%;
-    height: 34px;
-    border: 0;
+    height: 36px;
+    border: 1px solid #e2e5ea;
     border-radius: 10px;
-    padding: 0 12px 0 34px;
+    padding: 0 12px 0 36px;
     background: #fff;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-    font-size: 12px;
+    box-shadow: none;
+    font-size: 13px;
     color: #243447;
+    line-height: 36px;
 }
 
 .tickets-inbox-search input:focus {
     outline: none;
+    border-color: #b9e6f7;
     box-shadow: 0 0 0 2px rgba(47, 198, 246, 0.18);
 }
 
-.tickets-inbox-search i {
+.tickets-inbox-search > i,
+.tickets-inbox-search > svg {
     position: absolute;
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
     color: #98a2b3;
+    stroke: #98a2b3;
     pointer-events: none;
+    z-index: 1;
+    display: block;
+    margin: 0;
 }
 
 .tickets-inbox-status-tabs {

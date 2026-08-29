@@ -6,12 +6,14 @@
     var panelXhr = null;
     var activeNotificationId = null;
     var lastDateGroup = null;
+    var searchTimer = null;
 
     var state = {
         skip: 0,
         hasMore: true,
         loading: false,
-        tab: "unread"
+        tab: "unread",
+        search: ""
     };
 
     function getListEl() {
@@ -184,7 +186,8 @@
         var payload = {
             skip: state.skip,
             limit: PAGE_SIZE,
-            tab: state.tab
+            tab: state.tab,
+            search_by: state.search || ""
         };
 
         var filters = window.notificationInboxFilters || {};
@@ -686,6 +689,16 @@
             $(this).addClass("is-active");
             closeNotificationPanel();
             loadInbox(true);
+        });
+
+        $(document).on("input", "#notifications-inbox-search", function () {
+            var value = $(this).val();
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function () {
+                state.search = $.trim(value);
+                closeNotificationPanel();
+                loadInbox(true);
+            }, 350);
         });
 
         getListEl().on("scroll", function () {

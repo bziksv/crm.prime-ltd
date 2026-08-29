@@ -1001,6 +1001,23 @@ class Notifications_model extends Crud_model {
             $where .= " AND $notifications_table.project_id = $project_id";
         }
 
+        $search_by = trim((string) get_array_value($options, "search_by"));
+        if ($search_by !== "") {
+            $like = $this->db->escapeLikeString($search_by);
+            $where .= " AND (
+                CONCAT($users_table.first_name, ' ', $users_table.last_name) LIKE '%$like%' ESCAPE '!'
+                OR $projects_table.title LIKE '%$like%' ESCAPE '!'
+                OR $tasks_table.title LIKE '%$like%' ESCAPE '!'
+                OR $tickets_table.title LIKE '%$like%' ESCAPE '!'
+                OR $project_comments_table.description LIKE '%$like%' ESCAPE '!'
+                OR $ticket_comments_table.description LIKE '%$like%' ESCAPE '!'
+                OR $posts_table.description LIKE '%$like%' ESCAPE '!'
+                OR $announcements_table.title LIKE '%$like%' ESCAPE '!'
+                OR CAST($tasks_table.id AS CHAR) LIKE '%$like%' ESCAPE '!'
+                OR CAST($tickets_table.id AS CHAR) LIKE '%$like%' ESCAPE '!'
+            )";
+        }
+
         $order_by = "DESC";
         if ($new_order_by = $this->_get_clean_value($options, "order_by")) {
             $order_by = $new_order_by;

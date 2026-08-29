@@ -112,6 +112,12 @@
     <div id="notifications-page-content" class="notifications-page-content">
         <aside class="notifications-inbox-sidebar">
             <div class="notifications-inbox-toolbar">
+                <div class="notifications-inbox-toolbar-top">
+                    <div class="notifications-inbox-search">
+                        <i data-feather="search" class="icon-16"></i>
+                        <input type="search" id="notifications-inbox-search" placeholder="Поиск: автор, задача, проект, текст..." autocomplete="off">
+                    </div>
+                </div>
                 <div class="notifications-inbox-status-tabs">
                     <button type="button" data-tab="unread" class="is-active">Непрочитанные</button>
                     <button type="button" data-tab="all">Все</button>
@@ -129,17 +135,20 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="<?php echo base_url('assets/css/notifications-inbox.css?v=20260829r'); ?>">
+<link rel="stylesheet" href="<?php echo base_url('assets/css/notifications-inbox.css?v=20260830b'); ?>">
 <link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-panel.css?v=20260828r'); ?>">
 <script type="text/javascript">
     window.notificationInboxListUrl = "<?php echo get_uri('notifications/inbox_list_data'); ?>";
     window.notificationPanelUrl = "<?php echo get_uri('notifications/view_panel'); ?>";
     window.notificationInboxFilters = <?php echo json_encode($inbox_filters ?: new stdClass()); ?>;
 </script>
-<script src="<?php echo base_url('assets/js/notifications-inbox.js?v=20260830a'); ?>"></script>
+<script src="<?php echo base_url('assets/js/notifications-inbox.js?v=20260830b'); ?>"></script>
 
 <script>
     $(document).ready(function () {
+        if (typeof feather !== "undefined") {
+            feather.replace();
+        }
         var select2Opts = { width: "100%", allowClear: true };
         $('#notification_event_filter').select2($.extend({}, select2Opts, {
             multiple: true,
