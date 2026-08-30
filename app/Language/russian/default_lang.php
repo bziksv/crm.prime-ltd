@@ -1935,6 +1935,8 @@ $lang["edit_user_role"] = "Редактировать роль пользова�
 $lang["total_leads"] = "Всего лидов";
 
 $lang["copy_link"] = "Копировать ссылку";
+$lang["quote"] = "Цитировать";
+$lang["quote_wrote"] = "писал(а)";
 $lang["copy_comment_link"] = "Копировать ссылку на комментарий";
 
 $lang["pin_comment"] = "Закрепить комментарий";

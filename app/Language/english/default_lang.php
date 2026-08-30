@@ -1931,6 +1931,8 @@ $lang["edit_user_role"] = "Edit user role";
 $lang["total_leads"] = "Total leads";
 
 $lang["copy_link"] = "Copy link";
+$lang["quote"] = "Quote";
+$lang["quote_wrote"] = "wrote";
 $lang["copy_comment_link"] = "Copy comment link";
 
 $lang["pin_comment"] = "Pin comment";

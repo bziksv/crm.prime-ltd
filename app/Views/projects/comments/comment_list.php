@@ -100,11 +100,14 @@ foreach ($comments as $comment) {
                                 echo ajax_anchor(get_uri("projects/like_comment/" . $comment->id), "<i data-feather='$like_icon' class='icon-14 $like_icon_fill'></i> " . app_lang('like') . " ", array("class" => "mr5 like-button", "data-real-target" => "#comment-like-container-$comment->id"));
                             }
                             ?>
+                            <a href="javascript:;" class="mr5 quote-comment-button" title="<?php echo app_lang('quote'); ?>">
+                                <i data-feather="corner-up-left" class="icon-14"></i> <?php echo app_lang('quote'); ?>
+                            </a>
                         </span>
 
                     </div>
 
-                    <div class="mb-5">
+                    <div class="mb-5 comment-text">
                         <?php echo convert_mentions(convert_comment_link(process_images_from_content($comment->description))); ?>
                     </div>
 
@@ -262,6 +265,63 @@ foreach ($comments as $comment) {
             tempInput.select();
             document.execCommand("copy");
             document.body.removeChild(tempInput);
+        });
+
+        $(document).off("click.taskCommentActions", ".quote-comment-button").on("click.taskCommentActions", ".quote-comment-button", function (e) {
+            e.preventDefault();
+
+            var $comment = $(this).closest(".comment-container");
+            var author = $.trim($comment.find(".mb5 a.dark, .mb5 .dark.strong").first().text()) || "Комментарий";
+            var $body = $comment.find(".comment-text").first();
+            var $tmp = $("<div>").html($body.html() || "");
+            $tmp.find("script, style").remove();
+            var cleanHtml = $.trim($tmp.html() || "");
+            var plain = $.trim($tmp.text() || "");
+            if (!plain) {
+                return;
+            }
+
+            var safeAuthor = $("<div>").text(author).html();
+            var quoteHtml = "<p><br></p><blockquote><p><strong>" + safeAuthor + "</strong></p>" + cleanHtml + "</blockquote><p><br></p>";
+            var plainQuote = "\n" + author + ":\n" + plain.split(/\n/).map(function (line) { return "> " + line; }).join("\n") + "\n\n";
+
+            var $field = $("#comment_description");
+            if (!$field.length) {
+                $field = $(".comment_description").first();
+            }
+            if (!$field.length) {
+                return;
+            }
+
+            var $formBox = $("#task-comment-form-container, #project-comment-form-container, #file-comment-form-container, #customer_feedback-comment-form-container").filter(":visible").first();
+            if (!$formBox.length) {
+                $formBox = $field.closest("form");
+            }
+            if ($formBox.length && $formBox[0].scrollIntoView) {
+                $formBox[0].scrollIntoView({behavior: "smooth", block: "center"});
+            }
+
+            var insertQuote = function () {
+                if ($field.data("summernote") || $field.next(".note-editor").length) {
+                    var current = $field.summernote("code") || "";
+                    var isEmpty = !$.trim($("<div>").html(current).text());
+                    $field.summernote("code", isEmpty ? quoteHtml : (current + quoteHtml));
+                    $field.summernote("focus");
+                } else {
+                    var cur = $field.val() || "";
+                    $field.val(cur ? (cur.replace(/\s+$/, "") + "\n\n" + plainQuote) : plainQuote).focus();
+                }
+            };
+
+            if (!($field.data("summernote") || $field.next(".note-editor").length)
+                && typeof setSummernote === "function"
+                && AppHelper.settings.enableRichTextEditor === "1"
+                && $field.attr("data-rich-text-editor") !== undefined) {
+                setSummernote($field, false);
+                setTimeout(insertQuote, 220);
+            } else {
+                insertQuote();
+            }
         });
     });
 </script>

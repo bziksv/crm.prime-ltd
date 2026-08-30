@@ -3233,3 +3233,24 @@ a.pm-file-row-main:hover .pm-file-name {
     min-height: calc(100dvh - 65px);
     background-color: #eef1f9;
 }
+
+.quote-comment-button {
+    color: #667085;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.quote-comment-button:hover {
+    color: #0592c3;
+    text-decoration: none;
+}
+
+.comment-container blockquote,
+.note-editor blockquote,
+.comment_description + .note-editor blockquote {
+    border-left: 3px solid #0592c3;
+    margin: 0 0 10px;
+    padding: 6px 12px;
+    background: #f5f8fb;
+    color: #475467;
+}
