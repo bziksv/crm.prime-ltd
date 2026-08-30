@@ -25207,6 +25207,12 @@ $(document).ready(function () {
         setPageScrollable();
         setMenuScrollable();
     });
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", function () {
+            setPageScrollable();
+            setMenuScrollable();
+        });
+    }
 
     $('body').on('click', '.timeline-images:not(.app-modal-view) a', function () {
 
@@ -25702,10 +25708,20 @@ function appendDropdownClone($dropdown, handlerId) {
     $("#navbar").append($dropdownClone);
 }
 
+// Visible viewport height (Chrome DevTools / mobile browser chrome)
+getAppViewportHeight = function () {
+    var h = window.innerHeight || $(window).height() || 0;
+    if (window.visualViewport && window.visualViewport.height) {
+        h = Math.floor(window.visualViewport.height);
+    }
+    return h;
+};
+
 //set scrollbar on page
 setPageScrollable = function () {
+    var viewportH = getAppViewportHeight();
 
-    $("#page-content").css("min-height", $(window).height() - 115);
+    $("#page-content").css("min-height", viewportH - 115);
 
     // Do not keep a clipped scroller on the outer mask — it leaves a dead grey area in Chrome.
     var maskEl = document.getElementById("left-menu-toggle-mask");
@@ -25720,35 +25736,29 @@ setPageScrollable = function () {
         }
     }
 
+    // Ensure main column always fills the viewport so body bg never shows as a grey slab.
+    var $scrollPage = $("body").find("div.main-scrollable-page");
+    $scrollPage.addClass("scrollable-page");
+    $scrollPage.closest("div.page-container").addClass("overflow-auto");
+
     if ($(window).width() <= 640) {
         $('html').css({"overflow": "initial"});
         $('body').css({"overflow": "initial"});
     } else {
+        var topOffset = 65;
         if ($("body").find("div.footer").length) {
-            //has footer
-            if ($("body").find("nav.navbar").length) {
-
-                //has topbar
-                initScrollbar('.scrollable-page', {
-                    setHeight: $(window).height() - 60
-                });
-            } else {
-                initScrollbar('.scrollable-page', {
-                    setHeight: $(window).height() - 48
-                });
-            }
-        } else {
-
-            initScrollbar('.scrollable-page', {
-                setHeight: $(window).height() - 65
-            });
+            topOffset = $("body").find("nav.navbar").length ? 60 : 48;
         }
+
+        initScrollbar('.scrollable-page', {
+            setHeight: Math.max(200, viewportH - topOffset)
+        });
     }
 };
 //set scrollbar on left menu
 setMenuScrollable = function () {
     initScrollbar('.sidebar-scroll', {
-        setHeight: $(window).height() - 65
+        setHeight: getAppViewportHeight() - 65
     });
 };
 

@@ -3216,3 +3216,20 @@ a.pm-file-row-main:hover .pm-file-name {
 .rise-chat-wrapper {
     bottom: 52px;
 }
+
+/* Prevent grey body/#left-menu-toggle-mask showing through under the task list */
+#left-menu-toggle-mask {
+    min-height: calc(100vh - 65px);
+    min-height: calc(100dvh - 65px);
+}
+
+.page-container {
+    min-height: calc(100vh - 65px);
+    min-height: calc(100dvh - 65px);
+}
+
+.main-scrollable-page.scrollable-page {
+    min-height: calc(100vh - 65px);
+    min-height: calc(100dvh - 65px);
+    background-color: #eef1f9;
+}
