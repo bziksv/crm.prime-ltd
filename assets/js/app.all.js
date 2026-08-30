@@ -25442,22 +25442,33 @@ toggleLeftMenu = function (keyPressed) {
         }
     }
 
-    $("body").find("div#left-menu-toggle-mask").removeAttr("style");
-    $("body").find("div#left-menu-toggle-mask").find("div.sidebar").removeAttr("style");
+    var $mask = $("body").find("div#left-menu-toggle-mask");
+    var $scrollPage = $mask.find("div.main-scrollable-page");
+    var $pageContainer = $scrollPage.closest("div.page-container");
 
-    if ($("body").hasClass('sidebar-toggled')) {
-        initScrollbar('#left-menu-toggle-mask', {
-            setHeight: $(window).height() + 20
-        });
+    // Always clear leftover viewport locks (e.g. from tickets/chronicle) and mask PS height.
+    // Putting overflow/height on the mask clips the task list in Chrome and shows the page bg.
+    $mask.removeAttr("style");
+    $mask.find("div.sidebar").removeAttr("style");
+    $scrollPage.removeAttr("style");
+    if ($pageContainer.length) {
+        $pageContainer[0].style.removeProperty("overflow");
+        $pageContainer[0].style.removeProperty("overflow-y");
+        $pageContainer[0].style.removeProperty("height");
+        $pageContainer[0].style.removeProperty("max-height");
     }
 
-    $("body").find("div#left-menu-toggle-mask").find("div.main-scrollable-page").removeAttr("style");
-    $("body").find("div#left-menu-toggle-mask").find("div.main-scrollable-page").toggleClass("scrollable-page");
-    $("body").find("div#left-menu-toggle-mask").find("div.main-scrollable-page").closest("div.page-container").toggleClass("overflow-auto");
+    // Keep scrolling on the main page area in both sidebar states.
+    $scrollPage.addClass("scrollable-page");
+    $pageContainer.addClass("overflow-auto");
 
     if ($("body").hasClass('sidebar-toggled')) {
         if ($(window).width() >= 990) {
-            $("body").find("div#left-menu-toggle-mask").find("div.sidebar").css({"height": $("body").find("div#left-menu-toggle-mask")[0].scrollHeight});
+            // Match sidebar height to content without forcing mask into a clipped scroller
+            var maskEl = $mask[0];
+            if (maskEl) {
+                $mask.find("div.sidebar").css({"height": Math.max(maskEl.scrollHeight, $(window).height() - 65)});
+            }
         }
 
         if (typeof window.fullCalendar !== 'undefined') {
@@ -25695,6 +25706,19 @@ function appendDropdownClone($dropdown, handlerId) {
 setPageScrollable = function () {
 
     $("#page-content").css("min-height", $(window).height() - 115);
+
+    // Do not keep a clipped scroller on the outer mask — it leaves a dead grey area in Chrome.
+    var maskEl = document.getElementById("left-menu-toggle-mask");
+    if (maskEl && maskEl.getAttribute("style")) {
+        maskEl.style.removeProperty("height");
+        maskEl.style.removeProperty("max-height");
+        maskEl.style.removeProperty("position");
+        maskEl.style.removeProperty("overflow");
+        maskEl.style.removeProperty("overflow-y");
+        if (!(maskEl.getAttribute("style") || "").trim()) {
+            maskEl.removeAttribute("style");
+        }
+    }
 
     if ($(window).width() <= 640) {
         $('html').css({"overflow": "initial"});
