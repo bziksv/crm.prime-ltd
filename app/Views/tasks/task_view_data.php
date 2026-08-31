@@ -312,7 +312,7 @@ if ($total_sub_tasks) {
                                 <strong><?php echo app_lang("checklist"); ?></strong>
                                 <span class="checklist-header-count"><span class="chcklists_status_count">0</span>/<span class="chcklists_count">0</span></span>
                             </div>
-                            <label class="checklist-hide-completed-toggle mb0" for="checklist-hide-completed" title="<?php echo app_lang("hide_completed_checklist_items"); ?>">
+                            <label class="checklist-hide-completed-toggle mb0 hide" for="checklist-hide-completed" title="<?php echo app_lang("hide_completed_checklist_items"); ?>">
                                 <span class="checklist-hide-completed-switch">
                                     <input type="checkbox" id="checklist-hide-completed">
                                     <span class="checklist-hide-completed-track" aria-hidden="true"></span>

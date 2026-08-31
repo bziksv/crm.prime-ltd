@@ -169,9 +169,20 @@ $task_link = anchor(get_uri("tasks/view/$model_info->id"), '<i data-feather="ext
         $("#checklist-items").html(<?php echo $checklist_items; ?>);
 
         function applyChecklistHideCompleted() {
+            var $rows = $("#checklist-items .checklist-item-row");
+            var $toggle = $(".checklist-hide-completed-toggle");
+            var total = $rows.length;
+
+            // No checklist at all — nothing to hide
+            $toggle.toggleClass("hide", total === 0);
+            if (total === 0) {
+                $("#checklist-hidden-count").addClass("hide").text("");
+                return;
+            }
+
             var hide = $("#checklist-hide-completed").is(":checked");
             var hiddenCount = 0;
-            $("#checklist-items .checklist-item-row").each(function () {
+            $rows.each(function () {
                 var $row = $(this);
                 var done = $row.attr("data-checked") === "1" || $row.find(".checkbox-checked").length > 0;
                 if (done) {
@@ -236,14 +247,19 @@ $task_link = anchor(get_uri("tasks/view/$model_info->id"), '<i data-feather="ext
 
         //count checklists
         function count_checklists() {
-            var checklists = $(".checklist-items .checklist-item-row").length;
+            var checklists = $("#checklist-items .checklist-item-row").length;
             $(".chcklists_count").text(checklists);
+            applyChecklistHideCompleted();
         }
 
-        var checklists = $(".checklist-items .checklist-item-row").length;
-        $(".delete-checklist-item").click(function () {
-            checklists--;
-            $(".chcklists_count").text(checklists);
+        var checklists = $("#checklist-items .checklist-item-row").length;
+        $(document).on("click", "#checklist-items .delete-checklist-item", function () {
+            // fade-out removes the row asynchronously — refresh after a tick
+            setTimeout(function () {
+                count_checklists();
+                checklist_complete = $("#checklist-items .checkbox-checked").length;
+                $(".chcklists_status_count").text(checklist_complete);
+            }, 50);
         });
 
         count_checklists();
