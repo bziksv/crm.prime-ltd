@@ -3238,6 +3238,10 @@ a.pm-file-row-main:hover .pm-file-name {
     color: #667085;
     text-decoration: none;
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
 }
 
 .quote-comment-button:hover {
@@ -3245,12 +3249,46 @@ a.pm-file-row-main:hover .pm-file-name {
     text-decoration: none;
 }
 
-.comment-container blockquote,
-.note-editor blockquote,
-.comment_description + .note-editor blockquote {
-    border-left: 3px solid #0592c3;
-    margin: 0 0 10px;
-    padding: 6px 12px;
-    background: #f5f8fb;
+.comment-container .comment-text blockquote,
+.note-editor .note-editable blockquote {
+    border-left: 3px solid #0592c3 !important;
+    margin: 0 0 6px !important;
+    padding: 4px 10px !important;
+    background: #f5f8fb !important;
     color: #475467;
+    overflow: hidden;
+    max-width: 100%;
+    display: flow-root;
+}
+
+.comment-container .comment-text blockquote blockquote {
+    margin-top: 4px !important;
+    margin-bottom: 0 !important;
+    padding: 4px 8px !important;
+    background: #fff !important;
+}
+
+.comment-container .comment-text blockquote p,
+.note-editor .note-editable blockquote p {
+    margin: 0 0 2px !important;
+    padding: 0 !important;
+    line-height: 1.35 !important;
+    min-height: 0 !important;
+}
+
+.comment-container .comment-text blockquote p:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Summernote empty rows: <p><br></p> — hide so quotes don't grow a tall footer */
+.comment-container .comment-text blockquote p:empty,
+.comment-container .comment-text blockquote > br,
+.comment-container .comment-text blockquote p:has(> br:only-child),
+.note-editor .note-editable blockquote p:empty,
+.note-editor .note-editable blockquote p:has(> br:only-child) {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 0 !important;
 }

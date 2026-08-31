@@ -100,9 +100,6 @@ foreach ($comments as $comment) {
                                 echo ajax_anchor(get_uri("projects/like_comment/" . $comment->id), "<i data-feather='$like_icon' class='icon-14 $like_icon_fill'></i> " . app_lang('like') . " ", array("class" => "mr5 like-button", "data-real-target" => "#comment-like-container-$comment->id"));
                             }
                             ?>
-                            <a href="javascript:;" class="mr5 quote-comment-button" title="<?php echo app_lang('quote'); ?>">
-                                <i data-feather="corner-up-left" class="icon-14"></i> <?php echo app_lang('quote'); ?>
-                            </a>
                         </span>
 
                     </div>
@@ -120,6 +117,9 @@ foreach ($comments as $comment) {
                         ?>
 
                         <div class="mb15 clearfix">
+                            <a href="javascript:;" class="me-3 quote-comment-button" title="<?php echo app_lang('quote'); ?>">
+                                <i data-feather="corner-up-left" class="icon-16"></i> <?php echo app_lang('quote'); ?>
+                            </a>
                             <?php if (isset($comment->like_status)) { ?>
                                 <span id="comment-like-container-<?php echo $comment->id; ?>">
                                     <?php echo view("projects/comments/like_comment", array("comment" => $comment)); ?>
@@ -177,6 +177,45 @@ foreach ($comments as $comment) {
 <?php if (empty($omit_comment_list_scripts)) { ?>
 <script>
     $(document).ready(function() {
+        function compactCommentQuotes(root) {
+            $(root || document).find(".comment-text blockquote").each(function () {
+                var $bq = $(this);
+                $bq.find("p").each(function () {
+                    var $p = $(this);
+                    if ($p.find("img, video, iframe").length) {
+                        return;
+                    }
+                    if (!$.trim(($p.text() || "").replace(/\u00a0/g, " "))) {
+                        $p.remove();
+                    }
+                });
+                $bq.contents().filter(function () {
+                    return this.nodeType === 3 && !$.trim(this.nodeValue || "");
+                }).remove();
+                while ($bq.contents().length) {
+                    var $last = $($bq.contents().last());
+                    if ($last.is("br")) {
+                        $last.remove();
+                        continue;
+                    }
+                    if ($last.is("p") && !$last.find("img, video, iframe").length && !$.trim(($last.text() || "").replace(/\u00a0/g, " "))) {
+                        $last.remove();
+                        continue;
+                    }
+                    break;
+                }
+            });
+        }
+
+        compactCommentQuotes();
+
+        var commentListEl = document.querySelector(".comment-list-container");
+        if (commentListEl && window.MutationObserver) {
+            new MutationObserver(function () {
+                compactCommentQuotes(commentListEl);
+            }).observe(commentListEl, {childList: true, subtree: true});
+        }
+
         function highlightSpecificComment(commentId) {
             $(".comment-highlight-section").removeClass("comment-highlight");
             $("#comment-" + commentId).addClass("comment-highlight");
@@ -275,14 +314,30 @@ foreach ($comments as $comment) {
             var $body = $comment.find(".comment-text").first();
             var $tmp = $("<div>").html($body.html() || "");
             $tmp.find("script, style").remove();
-            var cleanHtml = $.trim($tmp.html() || "");
-            var plain = $.trim($tmp.text() || "");
+            // Flatten nested quotes/empty editor junk so the bubble does not grow a tall empty footer
+            $tmp.find("blockquote").each(function () {
+                $(this).replaceWith($("<div/>").append($(this).contents()).html());
+            });
+            $tmp.find("p, div").each(function () {
+                var $el = $(this);
+                if (!$el.find("img, video, iframe").length && !$.trim($el.text().replace(/\u00a0/g, " "))) {
+                    $el.remove();
+                }
+            });
+            $tmp.find("br + br").remove();
+
+            var plain = $.trim($tmp.text().replace(/\u00a0/g, " ").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n"));
             if (!plain) {
                 return;
             }
 
             var safeAuthor = $("<div>").text(author).html();
-            var quoteHtml = "<p><br></p><blockquote><p><strong>" + safeAuthor + "</strong></p>" + cleanHtml + "</blockquote><p><br></p>";
+            var bodyHtml = plain.split(/\n/).map(function (line) {
+                return $("<div>").text(line).html() || "<br>";
+            }).join("<br>");
+
+            // Empty line above quote for typing; compact blockquote; empty line below for reply
+            var quoteHtml = "<p><br></p><blockquote><p><strong>" + safeAuthor + "</strong><br>" + bodyHtml + "</p></blockquote><p><br></p>";
             var plainQuote = "\n" + author + ":\n" + plain.split(/\n/).map(function (line) { return "> " + line; }).join("\n") + "\n\n";
 
             var $field = $("#comment_description");
@@ -304,7 +359,7 @@ foreach ($comments as $comment) {
             var insertQuote = function () {
                 if ($field.data("summernote") || $field.next(".note-editor").length) {
                     var current = $field.summernote("code") || "";
-                    var isEmpty = !$.trim($("<div>").html(current).text());
+                    var isEmpty = !$.trim($("<div>").html(current).text().replace(/\u00a0/g, " "));
                     $field.summernote("code", isEmpty ? quoteHtml : (current + quoteHtml));
                     $field.summernote("focus");
                 } else {
