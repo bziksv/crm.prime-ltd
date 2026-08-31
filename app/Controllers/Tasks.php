@@ -1688,7 +1688,7 @@ class Tasks extends Security_Controller {
             return $status . $delete . $title;
         }
 
-        return "<div id='checklist-item-row-$data->id' class='list-group-item mb5 checklist-item-row b-a rounded text-break' data-id='$data->id'>" . $status . $delete . $edit . $copy . $title . "</div>";
+        return "<div id='checklist-item-row-$data->id' class='list-group-item mb5 checklist-item-row b-a rounded text-break' data-id='$data->id' data-checked='" . ($data->is_checked == 1 ? "1" : "0") . "'>" . $status . $delete . $edit . $copy . $title . "</div>";
     }
 
     private function _make_sub_task_row($data, $return_type = "row") {

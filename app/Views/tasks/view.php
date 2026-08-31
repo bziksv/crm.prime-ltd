@@ -168,6 +168,52 @@ $task_link = anchor(get_uri("tasks/view/$model_info->id"), '<i data-feather="ext
         //show the items in checklist
         $("#checklist-items").html(<?php echo $checklist_items; ?>);
 
+        function applyChecklistHideCompleted() {
+            var hide = $("#checklist-hide-completed").is(":checked");
+            var hiddenCount = 0;
+            $("#checklist-items .checklist-item-row").each(function () {
+                var $row = $(this);
+                var done = $row.attr("data-checked") === "1" || $row.find(".checkbox-checked").length > 0;
+                if (done) {
+                    $row.attr("data-checked", "1");
+                    hiddenCount++;
+                } else {
+                    $row.attr("data-checked", "0");
+                }
+                $row.toggleClass("hide", hide && done);
+            });
+
+            var $badge = $("#checklist-hidden-count");
+            if (hide && hiddenCount > 0) {
+                $badge.text(hiddenCount).removeClass("hide");
+            } else {
+                $badge.addClass("hide").text("");
+            }
+        }
+
+        (function initChecklistHideCompleted() {
+            var stored = null;
+            try {
+                stored = localStorage.getItem("prime_checklist_hide_completed");
+            } catch (e) {
+            }
+            // default: hide completed on large lists
+            var hide = stored === null
+                ? ($("#checklist-items .checklist-item-row").length >= 10)
+                : (stored === "1");
+            $("#checklist-hide-completed").prop("checked", hide);
+            applyChecklistHideCompleted();
+        })();
+
+        $("#checklist-hide-completed").on("change", function () {
+            var hide = $(this).is(":checked");
+            try {
+                localStorage.setItem("prime_checklist_hide_completed", hide ? "1" : "0");
+            } catch (e) {
+            }
+            applyChecklistHideCompleted();
+        });
+
         //show save & cancel button when the checklist-add-item-form is focused
         $("#checklist-add-item").focus(function () {
             $(".checklist-options-panel").removeClass("hide");
@@ -227,11 +273,13 @@ $task_link = anchor(get_uri("tasks/view/$model_info->id"), '<i data-feather="ext
                 $("#checklist-items").append(response.data);
 
                 count_checklists();
+                applyChecklistHideCompleted();
                 window.reloadKanban = true;
             }
         });
 
         $('body').on('click', '[data-act=update-checklist-item-status-checkbox]', function () {
+            var $row = $(this).closest(".checklist-item-row");
             var status_checkbox = $(this).find("span");
             status_checkbox.removeClass("checkbox-checked");
             status_checkbox.addClass("inline-loader");
@@ -252,6 +300,10 @@ $task_link = anchor(get_uri("tasks/view/$model_info->id"), '<i data-feather="ext
                 success: function (response) {
                     if (response.success) {
                         status_checkbox.closest("div").html(response.data);
+                        if ($row.length) {
+                            $row.attr("data-checked", $row.find(".checkbox-checked").length ? "1" : "0");
+                        }
+                        applyChecklistHideCompleted();
                         window.reloadKanban = true;
                     }
                 }

@@ -84,11 +84,11 @@
 </div>
 
 <link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-inbox.css?v=20260830a'); ?>">
-<link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-panel.css?v=20260831r'); ?>">
+<link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-panel.css?v=20260831s'); ?>">
 <script type="text/javascript">
     window.ticketInboxListUrl = "<?php echo get_uri('tickets/inbox_list_data'); ?>";
 </script>
-<script src="<?php echo base_url('assets/js/tickets-panel.js?v=20260829b'); ?>"></script>
+<script src="<?php echo base_url('assets/js/tickets-panel.js?v=20260831a'); ?>"></script>
 <script src="<?php echo base_url('assets/js/tickets-inbox.js?v=20260828m'); ?>"></script>
 
 

@@ -168,6 +168,10 @@
     display: none;
 }
 
+.ticket-panel-aside-actions .dropdown-menu.show {
+    display: block !important;
+}
+
 .ticket-aside-actions-menu-floating {
     display: block !important;
     position: fixed !important;

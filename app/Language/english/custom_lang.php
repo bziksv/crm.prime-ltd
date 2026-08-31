@@ -45,4 +45,6 @@ $lang["outbound_proxy_test_fail"] = "Send failed. Check proxy and bot token.";
 $lang["outbound_proxy_token_missing"] = "Telegram bot token is not configured (Telegram Notification plugin).";
 $lang["outbound_proxy_chat_missing"] = "Set your Telegram chat id in staff profile.";
 
+$lang["hide_completed_checklist_items"] = "Hide completed";
+
 return $lang;

@@ -307,8 +307,19 @@ if ($total_sub_tasks) {
                     <!--checklist-->
                     <?php echo form_open(get_uri("tasks/save_checklist_item"), array("id" => "checklist_form", "class" => "general-form", "role" => "form")); ?>
                     <div class="col-md-12 mb15 b-t">
-                        <div class="pb10 pt10">
-                            <strong class="float-start mr10"><?php echo app_lang("checklist"); ?></strong><span class="chcklists_status_count">0</span><span>/</span><span class="chcklists_count"></span>
+                        <div class="pb10 pt10 checklist-header-row">
+                            <div class="checklist-header-title">
+                                <strong><?php echo app_lang("checklist"); ?></strong>
+                                <span class="checklist-header-count"><span class="chcklists_status_count">0</span>/<span class="chcklists_count">0</span></span>
+                            </div>
+                            <label class="checklist-hide-completed-toggle mb0" for="checklist-hide-completed" title="<?php echo app_lang("hide_completed_checklist_items"); ?>">
+                                <span class="checklist-hide-completed-switch">
+                                    <input type="checkbox" id="checklist-hide-completed">
+                                    <span class="checklist-hide-completed-track" aria-hidden="true"></span>
+                                </span>
+                                <span class="checklist-hide-completed-text"><?php echo app_lang("hide_completed_checklist_items"); ?></span>
+                                <span class="checklist-hide-completed-badge hide" id="checklist-hidden-count"></span>
+                            </label>
                         </div>
                         <input type="hidden" name="task_id" value="<?php echo $task_id; ?>" />
                         <input type="hidden" id="is_checklist_group" name="is_checklist_group" value="" />

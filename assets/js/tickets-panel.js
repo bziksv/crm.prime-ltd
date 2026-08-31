@@ -142,10 +142,14 @@
         $dropdown.removeData("floating-menu");
     }
 
-    function initAsideActionsDropdown() {
-        var $buttons = $("#ticket-side-panel-body .ticket-panel-aside-actions [data-bs-toggle='dropdown']");
+    function initAsideActionsDropdown($root) {
+        var $scope = $root && $root.length ? $root : $(document);
+        var $buttons = $scope.find(".ticket-panel-aside-actions [data-bs-toggle='dropdown']");
 
         $buttons.each(function () {
+            if (typeof bootstrap === "undefined" || !bootstrap.Dropdown) {
+                return;
+            }
             var existing = bootstrap.Dropdown.getInstance(this);
             if (existing) {
                 existing.dispose();
@@ -167,7 +171,7 @@
             selectLastlySelectedTab("#ticket-side-panel-body");
         }
 
-        initAsideActionsDropdown();
+        initAsideActionsDropdown($("#ticket-side-panel-body"));
     }
 
     function showPanelLoading() {
@@ -316,6 +320,7 @@
         open: openTicketPanel,
         close: closeTicketPanel,
         restoreColumns: restoreTicketTableColumnsIfNeeded,
+        initAsideActionsDropdown: initAsideActionsDropdown,
         setRowCallback: function (nRow, aData) {
             if (!aData || typeof aData[0] === "undefined") {
                 return;

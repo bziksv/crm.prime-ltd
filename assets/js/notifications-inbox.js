@@ -508,6 +508,12 @@
         }
         getDetailBody().html(response);
         ensureMarkUnreadControl(getDetailBody());
+        if (window.TicketSidePanel && typeof TicketSidePanel.initAsideActionsDropdown === "function") {
+            TicketSidePanel.initAsideActionsDropdown(getDetailBody());
+        }
+        if (typeof feather !== "undefined") {
+            feather.replace();
+        }
         return true;
     }
 

@@ -6,6 +6,7 @@ $lang["notifications"] = "Хроника";
 $lang["team_responsible"] = "Ответственный";
 $lang["edit_checklist_item"] = "Редактировать элемент контрольного списка";
 $lang["copy_checklist_item"] = "Копировать элемент контрольного списка";
+$lang["hide_completed_checklist_items"] = "Скрыть закрытые";
 $lang["saved_note"] = "Заметка сохранена";
 $lang["personal_labels"] = "Личные ярлыки";
 $lang["executors"] = "Исполнители";
