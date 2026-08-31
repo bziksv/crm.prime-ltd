@@ -261,7 +261,7 @@
     border: 1px solid #e6eaef;
     border-radius: 10px;
     box-shadow: none;
-    overflow: hidden;
+    overflow: visible;
     margin-bottom: 8px;
 }
 
@@ -305,8 +305,14 @@
 
 .ticket-panel-view #comment-form-container .note-editor .note-editable {
     min-height: 64px !important;
-    max-height: 140px;
+    max-height: none;
     overflow-y: auto !important;
+}
+
+#comment-form-container .note-editor .note-statusbar,
+#comment-form-container .note-editor .note-resizebar {
+    display: block !important;
+    cursor: ns-resize;
 }
 
 .ticket-composer-bar {

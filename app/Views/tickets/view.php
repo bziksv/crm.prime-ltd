@@ -1,7 +1,7 @@
 <?php $user_id = $login_user->id; ?>
 <?php $is_embedded_view = ($view_type == "modal_view" || $view_type == "panel_view"); ?>
 <?php if ($view_type != "panel_view") { ?>
-<link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-panel.css?v=20260828r'); ?>">
+<link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-panel.css?v=20260831r'); ?>">
 <script>
 // Don't keep the spinner forever if remote assets hang on local.
 setTimeout(function () {

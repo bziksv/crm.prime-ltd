@@ -139,7 +139,7 @@
 </div>
 
 <link rel="stylesheet" href="<?php echo base_url('assets/css/notifications-inbox.css?v=20260830e'); ?>">
-<link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-panel.css?v=20260828r'); ?>">
+<link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-panel.css?v=20260831r'); ?>">
 <script type="text/javascript">
     window.notificationInboxListUrl = "<?php echo get_uri('notifications/inbox_list_data'); ?>";
     window.notificationPanelUrl = "<?php echo get_uri('notifications/view_panel'); ?>";
