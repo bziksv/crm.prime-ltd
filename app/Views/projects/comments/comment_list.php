@@ -100,6 +100,9 @@ foreach ($comments as $comment) {
                                 echo ajax_anchor(get_uri("projects/like_comment/" . $comment->id), "<i data-feather='$like_icon' class='icon-14 $like_icon_fill'></i> " . app_lang('like') . " ", array("class" => "mr5 like-button", "data-real-target" => "#comment-like-container-$comment->id"));
                             }
                             ?>
+                            <a href="javascript:;" class="mr5 quote-comment-button" title="<?php echo app_lang('quote'); ?>">
+                                <i data-feather="corner-up-left" class="icon-14"></i> <?php echo app_lang('quote'); ?>
+                            </a>
                         </span>
 
                     </div>
@@ -117,9 +120,6 @@ foreach ($comments as $comment) {
                         ?>
 
                         <div class="mb15 clearfix">
-                            <a href="javascript:;" class="me-3 quote-comment-button" title="<?php echo app_lang('quote'); ?>">
-                                <i data-feather="corner-up-left" class="icon-16"></i> <?php echo app_lang('quote'); ?>
-                            </a>
                             <?php if (isset($comment->like_status)) { ?>
                                 <span id="comment-like-container-<?php echo $comment->id; ?>">
                                     <?php echo view("projects/comments/like_comment", array("comment" => $comment)); ?>
@@ -311,6 +311,7 @@ foreach ($comments as $comment) {
 
             var $comment = $(this).closest(".comment-container");
             var author = $.trim($comment.find(".mb5 a.dark, .mb5 .dark.strong").first().text()) || "Комментарий";
+            var dateText = $.trim($comment.find(".mb5 small .text-off, .mb5 .text-off").first().text());
             var $body = $comment.find(".comment-text").first();
             var $tmp = $("<div>").html($body.html() || "");
             $tmp.find("script, style").remove();
@@ -332,13 +333,15 @@ foreach ($comments as $comment) {
             }
 
             var safeAuthor = $("<div>").text(author).html();
+            var safeDate = dateText ? $("<div>").text(dateText).html() : "";
             var bodyHtml = plain.split(/\n/).map(function (line) {
                 return $("<div>").text(line).html() || "<br>";
             }).join("<br>");
 
-            // Empty line above quote for typing; compact blockquote; empty line below for reply
-            var quoteHtml = "<p><br></p><blockquote><p><strong>" + safeAuthor + "</strong><br>" + bodyHtml + "</p></blockquote><p><br></p>";
-            var plainQuote = "\n" + author + ":\n" + plain.split(/\n/).map(function (line) { return "> " + line; }).join("\n") + "\n\n";
+            var quoteHeader = "<strong>" + safeAuthor + "</strong>" + (safeDate ? " <span style=\"color:#667085;font-weight:normal\">" + safeDate + "</span>" : "");
+            // Line above quote for typing; compact blockquote only (no trailing empty junk)
+            var quoteHtml = "<p><br></p><blockquote><p>" + quoteHeader + "<br>" + bodyHtml + "</p></blockquote>";
+            var plainQuote = "\n" + author + (dateText ? " (" + dateText + ")" : "") + ":\n" + plain.split(/\n/).map(function (line) { return "> " + line; }).join("\n") + "\n";
 
             var $field = $("#comment_description");
             if (!$field.length) {
@@ -353,27 +356,127 @@ foreach ($comments as $comment) {
                 $formBox = $field.closest("form");
             }
             if ($formBox.length && $formBox[0].scrollIntoView) {
-                $formBox[0].scrollIntoView({behavior: "smooth", block: "center"});
+                $formBox[0].scrollIntoView({behavior: "smooth", block: "nearest"});
             }
+
+            var getEditable = function () {
+                var $editable = $field.next(".note-editor").find(".note-editable");
+                if (!$editable.length) {
+                    $editable = $(".note-editor:visible .note-editable").first();
+                }
+                return $editable;
+            };
+
+            // Summernote keeps a fixed ~150px frame; height:auto fills that frame and looks like an empty footer.
+            // Size the editable to the sum of real children instead.
+            var fitEditorToContent = function () {
+                var $editable = getEditable();
+                if (!$editable.length) {
+                    return;
+                }
+                // Drop trailing empty nodes Summernote appends after blockquote
+                while ($editable.contents().length > 1) {
+                    var last = $editable.contents().last().get(0);
+                    if (!last) {
+                        break;
+                    }
+                    if (last.nodeType === 3 && !$.trim(last.nodeValue || "")) {
+                        $(last).remove();
+                        continue;
+                    }
+                    if (last.nodeType === 1) {
+                        var $last = $(last);
+                        if ($last.is("br")) {
+                            $last.remove();
+                            continue;
+                        }
+                        if ($last.is("p") && !$last.find("img, video, iframe").length && !$.trim(($last.text() || "").replace(/\u00a0/g, " "))) {
+                            // keep the leading typing line above the quote
+                            if ($last.index() === 0 && $last.next().is("blockquote")) {
+                                break;
+                            }
+                            $last.remove();
+                            continue;
+                        }
+                    }
+                    break;
+                }
+
+                var contentH = 0;
+                $editable.children().each(function () {
+                    contentH += $(this).outerHeight(true) || 0;
+                });
+                var padTop = parseFloat($editable.css("padding-top")) || 0;
+                var padBottom = parseFloat($editable.css("padding-bottom")) || 0;
+                var h = Math.ceil(contentH + padTop + padBottom + 2);
+                h = Math.max(72, Math.min(h, 360));
+                $editable.css({height: h + "px", minHeight: "0", maxHeight: "360px", overflowY: "auto"});
+                $editable.parent(".note-editing-area").css({height: "auto"});
+            };
+
+            var placeCaretInFirstParagraph = function () {
+                var $editable = getEditable();
+                var firstP = $editable.children("p").get(0) || $editable.find("p").get(0);
+                if (!firstP) {
+                    $field.summernote("focus");
+                    return;
+                }
+                $field.summernote("focus");
+                try {
+                    var range = document.createRange();
+                    var sel = window.getSelection();
+                    if (firstP.childNodes.length) {
+                        range.setStart(firstP, 0);
+                    } else {
+                        range.selectNodeContents(firstP);
+                    }
+                    range.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                } catch (err) {
+                    // ignore caret errors in older browsers
+                }
+            };
 
             var insertQuote = function () {
                 if ($field.data("summernote") || $field.next(".note-editor").length) {
                     var current = $field.summernote("code") || "";
-                    var isEmpty = !$.trim($("<div>").html(current).text().replace(/\u00a0/g, " "));
+                    var $cur = $("<div>").html(current);
+                    var isEmpty = !$.trim($cur.text().replace(/\u00a0/g, " "));
+                    // bare leftover text (no real HTML blocks) from a previous plain insert — replace
+                    if (!isEmpty && !$cur.find("p, div, blockquote, li, img, table").length) {
+                        isEmpty = true;
+                    }
                     $field.summernote("code", isEmpty ? quoteHtml : (current + quoteHtml));
-                    $field.summernote("focus");
+                    setTimeout(function () {
+                        fitEditorToContent();
+                        placeCaretInFirstParagraph();
+                    }, 40);
+                    setTimeout(fitEditorToContent, 120);
                 } else {
                     var cur = $field.val() || "";
                     $field.val(cur ? (cur.replace(/\s+$/, "") + "\n\n" + plainQuote) : plainQuote).focus();
                 }
             };
 
-            if (!($field.data("summernote") || $field.next(".note-editor").length)
+            var editorReady = function () {
+                return !!( $field.data("summernote") || $field.next(".note-editor").length );
+            };
+
+            if (!editorReady()
                 && typeof setSummernote === "function"
                 && AppHelper.settings.enableRichTextEditor === "1"
                 && $field.attr("data-rich-text-editor") !== undefined) {
                 setSummernote($field, false);
-                setTimeout(insertQuote, 220);
+                // Mentions load via AJAX before summernote init — wait instead of fixed 220ms
+                var tries = 0;
+                var waitReady = setInterval(function () {
+                    tries++;
+                    if (editorReady() || tries > 40) {
+                        clearInterval(waitReady);
+                        insertQuote();
+                    }
+                }, 50);
             } else {
                 insertQuote();
             }
