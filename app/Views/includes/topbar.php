@@ -106,8 +106,8 @@
                             "notification_is_read_filter" => "0",
                             "notification_team_members_filter" => "",
                             "notification_projects_filter" => "",
-                            "notification_grouped_filter" => "",
-                            "notification_order_by_filter" => "",
+                            "notification_grouped_filter" => "yes",
+                            "notification_order_by_filter" => "ASC",
                         ));
                         ?>
                         <li class="nav-item">
