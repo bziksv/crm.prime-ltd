@@ -596,31 +596,56 @@
             },
         });
 
-        $('#deadline').datepicker().on("show", function(e) {
-            $(".datepicker-days .day").each(function(i, el){
-                let timestamp = $(el).data('date');
-                let date = new Date(timestamp);
-                let year = date.getFullYear();
-                let month = date.getMonth() + 1;
-                let day = date.getDate();
-
-                let deadline = `${year}-${month}-${day}`;
-                let user_id = $("#assigned_to").val();
-
-                if (user_id && deadline) {
-                    $.ajax({
-                        url: '<?php echo_uri("tasks/get_count_tasks") ?>',
-                        type: "POST",
-                        data: {
-                            deadline: deadline,
-                            user_id: user_id,
-                        },
-                        success: (response) => {
-                            $("div[data-deadline="+ deadline +"]").next(".badge").text(response);
-                        }
-                    });
+        // One batch request for the visible month (was ~42 get_count_tasks calls on every show)
+        $('#deadline').datepicker().on("show changeMonth changeYear", function () {
+            setTimeout(function () {
+                var user_id = $("#assigned_to").val();
+                var $days = $(".datepicker-days [data-deadline]");
+                if (!user_id || !$days.length) {
+                    return;
                 }
-            });
+
+                function padDateParts(deadlineAttr) {
+                    var parts = String(deadlineAttr).split('-');
+                    if (parts.length !== 3) {
+                        return deadlineAttr;
+                    }
+                    return parts[0] + '-' + ('0' + parts[1]).slice(-2) + '-' + ('0' + parts[2]).slice(-2);
+                }
+
+                var dates = [];
+                $days.each(function () {
+                    dates.push(padDateParts($(this).attr("data-deadline")));
+                });
+                dates.sort();
+
+                if (window._deadlineCountXhr && window._deadlineCountXhr.readyState !== 4) {
+                    window._deadlineCountXhr.abort();
+                }
+
+                window._deadlineCountXhr = $.ajax({
+                    url: '<?php echo_uri("tasks/get_count_tasks") ?>',
+                    type: "POST",
+                    dataType: "json",
+                    data: {
+                        user_id: user_id,
+                        from_date: dates[0],
+                        to_date: dates[dates.length - 1]
+                    },
+                    success: function (response) {
+                        if (!response || typeof response !== "object") {
+                            return;
+                        }
+                        $days.each(function () {
+                            var key = padDateParts($(this).attr("data-deadline"));
+                            var count = response[key];
+                            if (typeof count !== "undefined") {
+                                $(this).next(".badge").text(count);
+                            }
+                        });
+                    }
+                });
+            }, 0);
         });
 
         setTimePicker("#start_time, #end_time");

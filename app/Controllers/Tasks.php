@@ -4248,11 +4248,20 @@ class Tasks extends Security_Controller {
     function get_count_tasks() {
         $options = [
             'assigned_to' => $this->request->getPost('user_id'),
-            'deadline' => $this->request->getPost('deadline'),
             'status_ids' => "1,2,4,5,6"
         ];
 
-        return $this->Tasks_model->count_tasks($options);
+        // Batch for datepicker month: one query instead of ~42 per-day calls
+        $from_date = $this->request->getPost('from_date');
+        $to_date = $this->request->getPost('to_date');
+        if ($from_date && $to_date) {
+            $options['from_date'] = $from_date;
+            $options['to_date'] = $to_date;
+            return $this->response->setJSON($this->Tasks_model->count_tasks_by_deadline_range($options));
+        }
+
+        $options['deadline'] = $this->request->getPost('deadline');
+        return $this->response->setJSON($this->Tasks_model->count_tasks($options));
     }
 
     function get_task_labels_dropdown_for_filter() {

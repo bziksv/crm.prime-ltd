@@ -253,7 +253,8 @@ $task_link = anchor(get_uri("tasks/view/$model_info->id"), '<i data-feather="ext
         }
 
         var checklists = $("#checklist-items .checklist-item-row").length;
-        $(document).on("click", "#checklist-items .delete-checklist-item", function () {
+        $(document).off("click.taskChecklistDelete", "#checklist-items .delete-checklist-item")
+            .on("click.taskChecklistDelete", "#checklist-items .delete-checklist-item", function () {
             // fade-out removes the row asynchronously — refresh after a tick
             setTimeout(function () {
                 count_checklists();
@@ -294,7 +295,8 @@ $task_link = anchor(get_uri("tasks/view/$model_info->id"), '<i data-feather="ext
             }
         });
 
-        $('body').on('click', '[data-act=update-checklist-item-status-checkbox]', function () {
+        $('body').off('click.taskChecklistStatus', '[data-act=update-checklist-item-status-checkbox]')
+            .on('click.taskChecklistStatus', '[data-act=update-checklist-item-status-checkbox]', function () {
             var $row = $(this).closest(".checklist-item-row");
             var status_checkbox = $(this).find("span");
             status_checkbox.removeClass("checkbox-checked");
@@ -351,7 +353,8 @@ $task_link = anchor(get_uri("tasks/view/$model_info->id"), '<i data-feather="ext
             }
         });
 
-        $('body').on('click', '[data-act=update-sub-task-status-checkbox]', function () {
+        $('body').off('click.taskSubTaskStatus', '[data-act=update-sub-task-status-checkbox]')
+            .on('click.taskSubTaskStatus', '[data-act=update-sub-task-status-checkbox]', function () {
             var sub_task_status_checkbox = $(this).find("span");
             sub_task_status_checkbox.removeClass("checkbox-checked");
             sub_task_status_checkbox.addClass("inline-loader");
@@ -438,11 +441,13 @@ $task_link = anchor(get_uri("tasks/view/$model_info->id"), '<i data-feather="ext
             });
         }
 
-        $('body').on('click', '.dependency-tasks-close', function () {
+        $('body').off('click.taskDependencyClose', '.dependency-tasks-close')
+            .on('click.taskDependencyClose', '.dependency-tasks-close', function () {
             hideFromAndArea();
         });
 
-        $('body').on('click', '#dependency-area [data-act="ajax-request"]', function () {
+        $('body').off('click.taskDependencyAjax', '#dependency-area [data-act="ajax-request"]')
+            .on('click.taskDependencyAjax', '#dependency-area [data-act="ajax-request"]', function () {
             setTimeout(function () {
                 hideFromAndArea();
             }, 800);
@@ -512,7 +517,7 @@ $task_link = anchor(get_uri("tasks/view/$model_info->id"), '<i data-feather="ext
             $(this).addClass("active");
         });
 
-        $(document).on("pinCommentUpdated", function () {
+        $(document).off("pinCommentUpdated.taskView").on("pinCommentUpdated.taskView", function () {
             updatePinCommentAbove();
         });
 

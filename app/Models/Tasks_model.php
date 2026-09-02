@@ -932,6 +932,44 @@ class Tasks_model extends Crud_model {
         return $this->db->query($sql)->getRow()->total;
     }
 
+    /**
+     * Counts open-ish tasks per deadline day in a range (one query for the datepicker).
+     * Returns map keyed by Y-m-d => count.
+     */
+    function count_tasks_by_deadline_range($options = []) {
+        $tasks_table = $this->db->prefixTable('tasks');
+
+        $where = '';
+
+        $assigned_to = $this->_get_clean_value($options, "assigned_to");
+        if ($assigned_to) {
+            $where .= " AND ($tasks_table.assigned_to = $assigned_to OR FIND_IN_SET('$assigned_to', $tasks_table.executors))";
+        }
+
+        $from_date = $this->_get_clean_value($options, "from_date");
+        $to_date = $this->_get_clean_value($options, "to_date");
+        if ($from_date && $to_date) {
+            $where .= " AND $tasks_table.deadline >= DATE('$from_date') AND $tasks_table.deadline <= DATE('$to_date')";
+        }
+
+        $status_ids = $this->_get_clean_value($options, "status_ids");
+        if ($status_ids) {
+            $where .= " AND FIND_IN_SET($tasks_table.status_id,'$status_ids')";
+        }
+
+        $sql = "SELECT DATE($tasks_table.deadline) AS deadline_date, COUNT($tasks_table.id) AS total
+            FROM $tasks_table
+            WHERE $tasks_table.deleted = 0 AND $tasks_table.deadline IS NOT NULL $where
+            GROUP BY DATE($tasks_table.deadline)";
+
+        $result = array();
+        foreach ($this->db->query($sql)->getResult() as $row) {
+            $result[$row->deadline_date] = (int) $row->total;
+        }
+
+        return $result;
+    }
+
     function get_label_suggestions($project_id) {
         $tasks_table = $this->db->prefixTable('tasks');
         $sql = "SELECT GROUP_CONCAT(labels) as label_groups
