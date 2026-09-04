@@ -77,17 +77,7 @@ if (!function_exists('get_file_uri')) {
                 return base_url($normalized);
             }
 
-            $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
-            $is_local_host = (function_exists('is_localhost') && is_localhost())
-                || strpos($host, '127.0.0.1') !== false
-                || strpos($host, 'localhost') !== false;
-
-            // On local: never hang on missing remote binaries for avatars; keep remote for logos/files
-            // so UI assets still render when the production files host is reachable.
-            if ($is_local_host && (strpos($normalized, 'profile_images/') !== false)) {
-                return base_url('assets/images/avatar.jpg');
-            }
-
+            // Missing locally → serve from files.baseURL (prod), including profile avatars
             return rtrim((string) $filesBase, '/') . '/' . $normalized;
         }
 
