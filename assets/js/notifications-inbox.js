@@ -413,6 +413,17 @@
             feather.replace();
         }
 
+        var $copyBtn = $("#notification-detail-body .js-copy-entity-link");
+        if ($copyBtn.length && typeof bootstrap !== "undefined" && bootstrap.Tooltip) {
+            $copyBtn.each(function () {
+                var existing = bootstrap.Tooltip.getInstance(this);
+                if (existing) {
+                    existing.dispose();
+                }
+                new bootstrap.Tooltip(this);
+            });
+        }
+
         if (typeof selectLastlySelectedTab === "function") {
             selectLastlySelectedTab("#notification-detail-body");
         }
@@ -731,6 +742,72 @@
             }
 
             setNotificationUnread(notificationId);
+        });
+
+        $(document).on("click", ".js-copy-entity-link", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            var $btn = $(this);
+            var url = String($btn.attr("data-url") || "").trim();
+            var copyLabel = String($btn.attr("data-copy-label") || $btn.attr("title") || "Копировать ссылку").trim();
+            var copiedLabel = String($btn.attr("data-copied-label") || "Ссылка скопирована!").trim();
+            if (!url) {
+                return;
+            }
+            if (url.indexOf("http") !== 0) {
+                url = window.location.origin + (url.charAt(0) === "/" ? url : "/" + url);
+            }
+
+            function onCopied() {
+                var tip = (typeof bootstrap !== "undefined" && bootstrap.Tooltip)
+                    ? bootstrap.Tooltip.getInstance($btn[0])
+                    : null;
+                $btn.attr("data-bs-original-title", copiedLabel);
+                $btn.attr("title", copiedLabel);
+                if (tip) {
+                    tip.setContent({ ".tooltip-inner": copiedLabel });
+                    tip.show();
+                }
+                if (typeof appAlert !== "undefined") {
+                    appAlert.success(copiedLabel, { duration: 2000 });
+                }
+                setTimeout(function () {
+                    $btn.attr("data-bs-original-title", copyLabel);
+                    $btn.attr("title", copyLabel);
+                    if (tip) {
+                        tip.setContent({ ".tooltip-inner": copyLabel });
+                        tip.hide();
+                    }
+                }, 1500);
+            }
+
+            function fallbackCopy(text) {
+                var ta = document.createElement("textarea");
+                ta.value = text;
+                ta.setAttribute("readonly", "");
+                ta.style.position = "fixed";
+                ta.style.left = "-9999px";
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand("copy");
+                    onCopied();
+                } catch (err) {
+                    if (typeof appAlert !== "undefined") {
+                        appAlert.error("Не удалось скопировать");
+                    }
+                }
+                document.body.removeChild(ta);
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(onCopied).catch(function () {
+                    fallbackCopy(url);
+                });
+            } else {
+                fallbackCopy(url);
+            }
         });
 
         $(document).on("click", ".notifications-list-page .js-mark-all-notifications-read", function (event) {

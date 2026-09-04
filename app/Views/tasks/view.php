@@ -48,6 +48,16 @@
                 </div>
             </div>
             <div class="task-panel-view-toolbar">
+                <button type="button"
+                        class="btn btn-default btn-sm js-copy-entity-link"
+                        data-url="<?php echo esc(get_uri("tasks/view/" . $model_info->id)); ?>"
+                        data-copy-label="<?php echo esc(app_lang('copy_task_link')); ?>"
+                        data-copied-label="<?php echo esc(app_lang('task_link_copied')); ?>"
+                        title="<?php echo app_lang('copy_task_link'); ?>"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="bottom">
+                    <i data-feather="link" class="icon-16"></i>
+                </button>
                 <a href="<?php echo get_uri("tasks/view/" . $model_info->id); ?>" class="btn btn-default btn-sm" title="<?php echo app_lang('task_info'); ?>" target="_blank">
                     <i data-feather="external-link" class="icon-16"></i>
                 </a>

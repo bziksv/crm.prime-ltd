@@ -59,4 +59,9 @@ $lang["outbound_proxy_test_fail"] = "Не удалось отправить. П�
 $lang["outbound_proxy_token_missing"] = "Не настроен токен Telegram-бота (плагин Telegram Notification).";
 $lang["outbound_proxy_chat_missing"] = "Укажите Telegram chat id в вашем профиле сотрудника.";
 
+$lang["copy_task_link"] = "Копировать ссылку на задачу";
+$lang["task_link_copied"] = "Ссылка на задачу скопирована!";
+$lang["copy_ticket_link"] = "Копировать ссылку на заявку";
+$lang["ticket_link_copied"] = "Ссылка на заявку скопирована!";
+
 return $lang;

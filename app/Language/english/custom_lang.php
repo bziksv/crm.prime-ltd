@@ -47,4 +47,9 @@ $lang["outbound_proxy_chat_missing"] = "Set your Telegram chat id in staff profi
 
 $lang["hide_completed_checklist_items"] = "Hide completed";
 
+$lang["copy_task_link"] = "Copy task link";
+$lang["task_link_copied"] = "Task link copied!";
+$lang["copy_ticket_link"] = "Copy ticket link";
+$lang["ticket_link_copied"] = "Ticket link copied!";
+
 return $lang;
