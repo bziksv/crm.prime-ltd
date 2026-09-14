@@ -188,7 +188,81 @@
 <script>
 $(document).ready(function () {
     if (typeof feather !== "undefined") {
-        feather.replace();
+        try {
+            feather.replace();
+        } catch (e) {
+            console.warn("feather.replace failed", e);
+        }
+    }
+
+    // Never leave a stuck full-page loader from a previous nudge attempt
+    if (typeof appLoader !== "undefined") {
+        appLoader.hide();
+    }
+    $("#app-loader").remove();
+
+    var nudgeDefaultHtml = $("#task-control-nudge-btn").html();
+
+    function setNudgeProgress(doneCount, total) {
+        var label = <?php echo json_encode(app_lang("task_control_nudge_progress")); ?>;
+        $("#task-control-nudge-btn").html(label.replace("%s", doneCount).replace("%s", total));
+    }
+
+    function finishNudge($btn, sent, failed) {
+        $btn.data("busy", false).prop("disabled", false).removeClass("disabled");
+        $btn.html(nudgeDefaultHtml);
+        if (typeof feather !== "undefined") {
+            try { feather.replace(); } catch (e) {}
+        }
+        appAlert.success(<?php echo json_encode(app_lang("task_control_nudge_done")); ?>.replace("%s", sent).replace("%s", failed), {duration: 8000});
+    }
+
+    function failNudge($btn, message) {
+        $btn.data("busy", false).prop("disabled", false).removeClass("disabled");
+        $btn.html(nudgeDefaultHtml);
+        if (typeof feather !== "undefined") {
+            try { feather.replace(); } catch (e) {}
+        }
+        appAlert.error(message || <?php echo json_encode(app_lang("error_occurred")); ?>);
+    }
+
+    function sendNudgeBatch($btn, offset, sentTotal, failedTotal) {
+        $.ajax({
+            url: "<?php echo get_uri('tasks/control_nudge_overdue'); ?>",
+            type: "POST",
+            dataType: "json",
+            timeout: 45000,
+            data: {
+                offset: offset,
+                limit: 10
+            },
+            success: function (result) {
+                if (!result || !result.success) {
+                    failNudge($btn, result && result.message);
+                    return;
+                }
+
+                var sent = sentTotal + (parseInt(result.sent, 10) || 0);
+                var failed = failedTotal + (parseInt(result.failed, 10) || 0);
+                var nextOffset = parseInt(result.next_offset, 10) || (offset + 10);
+                var total = parseInt(result.total, 10) || nextOffset;
+
+                setNudgeProgress(Math.min(nextOffset, total), total);
+
+                if (result.done) {
+                    finishNudge($btn, sent, failed);
+                    return;
+                }
+
+                // Keep the page usable between batches — no full-screen loader
+                setTimeout(function () {
+                    sendNudgeBatch($btn, nextOffset, sent, failed);
+                }, 150);
+            },
+            error: function () {
+                failNudge($btn);
+            }
+        });
     }
 
     $("#task-control-nudge-btn").on("click", function () {
@@ -202,28 +276,9 @@ $(document).ready(function () {
             return;
         }
 
-        $btn.data("busy", true).addClass("disabled");
-        appLoader.show();
-
-        $.ajax({
-            url: "<?php echo get_uri('tasks/control_nudge_overdue'); ?>",
-            type: "POST",
-            dataType: "json",
-            success: function (result) {
-                if (result && result.success) {
-                    appAlert.success(result.message, {duration: 8000});
-                } else {
-                    appAlert.error((result && result.message) || <?php echo json_encode(app_lang("error_occurred")); ?>);
-                }
-            },
-            error: function () {
-                appAlert.error(<?php echo json_encode(app_lang("error_occurred")); ?>);
-            },
-            complete: function () {
-                appLoader.hide();
-                $btn.data("busy", false).removeClass("disabled");
-            }
-        });
+        $btn.data("busy", true).prop("disabled", true).addClass("disabled");
+        setNudgeProgress(0, <?php echo (int) count($overdue_tasks); ?>);
+        sendNudgeBatch($btn, 0, 0, 0);
     });
 });
 </script>

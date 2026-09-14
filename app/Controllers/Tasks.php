@@ -4641,23 +4641,37 @@ class Tasks extends Security_Controller {
     }
 
     /**
-     * Post a reminder comment into every overdue task created by current user.
+     * Post reminder comments into overdue tasks created by current user.
+     * Processes in small batches so the UI is not blocked for minutes.
      */
     function control_nudge_overdue() {
         $this->access_only_team_members();
 
+        @set_time_limit(60);
+
         $lists = $this->_get_task_control_lists($this->login_user->id);
         $overdue = $lists["overdue"];
-        if (!$overdue) {
+        $total = count($overdue);
+        if (!$total) {
             echo json_encode(array("success" => false, "message" => app_lang("no_data")));
             return;
         }
 
+        $offset = (int) $this->request->getPost("offset");
+        if ($offset < 0) {
+            $offset = 0;
+        }
+        $limit = (int) $this->request->getPost("limit");
+        if ($limit <= 0 || $limit > 20) {
+            $limit = 10;
+        }
+
+        $batch = array_slice($overdue, $offset, $limit);
         $message = $this->_task_control_nudge_message();
         $sent = 0;
         $failed = 0;
 
-        foreach ($overdue as $task) {
+        foreach ($batch as $task) {
             $data = array(
                 "created_by" => $this->login_user->id,
                 "created_at" => get_current_utc_time(),
@@ -4690,11 +4704,16 @@ class Tasks extends Security_Controller {
             }
         }
 
+        $next_offset = $offset + count($batch);
+        $done = $next_offset >= $total;
+
         echo json_encode(array(
             "success" => true,
-            "message" => sprintf(app_lang("task_control_nudge_done"), $sent, $failed),
             "sent" => $sent,
             "failed" => $failed,
+            "next_offset" => $next_offset,
+            "total" => $total,
+            "done" => $done,
         ));
     }
 

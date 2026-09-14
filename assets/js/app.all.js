@@ -25140,10 +25140,18 @@ $(document).ready(function () {
     }
 
     //call the feather.replace() method
-    feather.replace();
+    try {
+        feather.replace();
+    } catch (e) {
+        console.warn("feather.replace failed", e);
+    }
 
     $(document).bind("ajaxComplete", function () {
-        feather.replace();
+        try {
+            feather.replace();
+        } catch (e) {
+            console.warn("feather.replace failed", e);
+        }
     });
 
     //expand or collapse sidebar menu
