@@ -4626,4 +4626,143 @@ class Tasks extends Security_Controller {
         );
     }
 
+    /**
+     * Control desk: overdue + "on review by setter" tasks created by current user.
+     */
+    function control() {
+        $this->access_only_team_members();
+
+        $lists = $this->_get_task_control_lists($this->login_user->id);
+        $view_data["overdue_tasks"] = $lists["overdue"];
+        $view_data["review_tasks"] = $lists["review"];
+        $view_data["nudge_message"] = $this->_task_control_nudge_message();
+
+        return $this->template->rander("tasks/control", $view_data);
+    }
+
+    /**
+     * Post a reminder comment into every overdue task created by current user.
+     */
+    function control_nudge_overdue() {
+        $this->access_only_team_members();
+
+        $lists = $this->_get_task_control_lists($this->login_user->id);
+        $overdue = $lists["overdue"];
+        if (!$overdue) {
+            echo json_encode(array("success" => false, "message" => app_lang("no_data")));
+            return;
+        }
+
+        $message = $this->_task_control_nudge_message();
+        $sent = 0;
+        $failed = 0;
+
+        foreach ($overdue as $task) {
+            $data = array(
+                "created_by" => $this->login_user->id,
+                "created_at" => get_current_utc_time(),
+                "project_id" => $task->project_id ? $task->project_id : 0,
+                "file_id" => 0,
+                "task_id" => $task->id,
+                "customer_feedback_id" => 0,
+                "comment_id" => 0,
+                "description" => $message,
+                "files" => "",
+            );
+
+            $save_id = $this->Project_comments_model->save_comment($data);
+            if ($save_id) {
+                $sent++;
+                $notification_options = array("task_id" => $task->id, "project_comment_id" => $save_id);
+                if ($task->project_id) {
+                    $notification_options["project_id"] = $task->project_id;
+                    log_notification("project_task_commented", $notification_options);
+                } else {
+                    $context = $task->context ?: "project";
+                    $context_id_key = $context . "_id";
+                    if (isset($task->{$context_id_key})) {
+                        $notification_options[$context_id_key] = $task->{$context_id_key};
+                    }
+                    log_notification("general_task_commented", $notification_options);
+                }
+            } else {
+                $failed++;
+            }
+        }
+
+        echo json_encode(array(
+            "success" => true,
+            "message" => sprintf(app_lang("task_control_nudge_done"), $sent, $failed),
+            "sent" => $sent,
+            "failed" => $failed,
+        ));
+    }
+
+    private function _task_control_nudge_message() {
+        return "Внимание задача просрочена, проверьте ее, приступите к выполнению, скорректируйте сроки!";
+    }
+
+    private function _get_task_control_lists($user_id) {
+        $user_id = (int) $user_id;
+        $db = $this->Tasks_model->db;
+        $tasks_table = $db->prefixTable("tasks");
+        $projects_table = $db->prefixTable("projects");
+        $users_table = $db->prefixTable("users");
+        $task_status_table = $db->prefixTable("task_status");
+        $activity_logs_table = $db->prefixTable("activity_logs");
+
+        $today = get_my_local_time("Y-m-d");
+
+        $sql = "SELECT t.*,
+                    p.title AS project_title,
+                    ts.title AS status_title,
+                    ts.key_name AS status_key_name,
+                    ts.color AS status_color,
+                    CONCAT(u.first_name, ' ', u.last_name) AS assigned_to_user
+                FROM $tasks_table t
+                INNER JOIN $activity_logs_table al
+                    ON al.log_type = 'task'
+                    AND al.log_type_id = t.id
+                    AND al.action = 'created'
+                    AND al.created_by = $user_id
+                    AND al.deleted = 0
+                LEFT JOIN $projects_table p ON p.id = t.project_id
+                LEFT JOIN $task_status_table ts ON ts.id = t.status_id AND ts.deleted = 0
+                LEFT JOIN $users_table u ON u.id = t.assigned_to
+                WHERE t.deleted = 0
+                  AND (
+                        (t.status_id != 3 AND t.deadline IS NOT NULL AND DATE(t.deadline) < " . $db->escape($today) . ")
+                        OR t.status_id = 6
+                  )
+                ORDER BY t.deadline ASC, t.id DESC";
+
+        $rows = $db->query($sql)->getResult();
+        $overdue = array();
+        $review = array();
+        $seen_overdue = array();
+        $seen_review = array();
+
+        foreach ($rows as $row) {
+            $is_overdue = ((int) $row->status_id !== 3)
+                && $row->deadline
+                && is_date_exists($row->deadline)
+                && (substr($row->deadline, 0, 10) < $today);
+
+            if ($is_overdue && empty($seen_overdue[$row->id])) {
+                $overdue[] = $row;
+                $seen_overdue[$row->id] = true;
+            }
+
+            if ((int) $row->status_id === 6 && empty($seen_review[$row->id])) {
+                $review[] = $row;
+                $seen_review[$row->id] = true;
+            }
+        }
+
+        return array(
+            "overdue" => $overdue,
+            "review" => $review,
+        );
+    }
+
 }

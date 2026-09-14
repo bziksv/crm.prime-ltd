@@ -52,5 +52,13 @@ $lang["task_link_copied"] = "Task link copied!";
 $lang["copy_ticket_link"] = "Copy ticket link";
 $lang["ticket_link_copied"] = "Ticket link copied!";
 $lang["task_timeline"] = "Feed";
+$lang["task_control"] = "Task control";
+$lang["task_control_lead"] = "Tasks you created that are overdue or waiting for setter review.";
+$lang["task_control_overdue"] = "Overdue";
+$lang["task_control_on_review"] = "Waiting for setter review";
+$lang["task_control_nudge_overdue"] = "Nudge overdue tasks";
+$lang["task_control_nudge_preview"] = "Reminder text";
+$lang["task_control_nudge_confirm"] = "Send a reminder to %s overdue tasks? The comment will be posted from your account.";
+$lang["task_control_nudge_done"] = "Reminders sent: %s. Failed: %s.";
 
 return $lang;

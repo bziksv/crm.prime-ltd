@@ -65,6 +65,7 @@ class Notifications extends Security_Controller {
         );
 
         $notifications = $this->Notifications_model->get_notifications($this->login_user->id, $skip, $limit, $options);
+        $raw_count = is_array($notifications->result) ? count($notifications->result) : 0;
 
         if ($this->should_group_notifications(get_array_value($options, "grouped"))) {
             $grouped = (new NotificationGrouper($notifications->result))->get_grouped_unread_by_task();
@@ -83,6 +84,7 @@ class Notifications extends Security_Controller {
         }
 
         $found_rows = (int) $notifications->found_rows;
+        $next_skip = $skip + $raw_count;
 
         // Counts always for unread (independent of active tab), same filters otherwise
         $stats_options = $options;
@@ -92,7 +94,8 @@ class Notifications extends Security_Controller {
             "success" => true,
             "data" => $items,
             "recordsTotal" => $found_rows,
-            "hasMore" => ($skip + count($items)) < $found_rows,
+            "next_skip" => $next_skip,
+            "hasMore" => $next_skip < $found_rows,
             "unread_total" => (int) get_array_value($stats, "unread_total"),
             "unread_unique" => (int) get_array_value($stats, "unread_unique"),
         ), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);

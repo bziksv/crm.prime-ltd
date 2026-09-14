@@ -64,5 +64,13 @@ $lang["task_link_copied"] = "Ссылка на задачу скопирован
 $lang["copy_ticket_link"] = "Копировать ссылку на заявку";
 $lang["ticket_link_copied"] = "Ссылка на заявку скопирована!";
 $lang["task_timeline"] = "Лента";
+$lang["task_control"] = "Контроль задач";
+$lang["task_control_lead"] = "Задачи, которые вы поставили: просроченные и на проверке постановщику.";
+$lang["task_control_overdue"] = "Просроченные";
+$lang["task_control_on_review"] = "На проверке постановщику";
+$lang["task_control_nudge_overdue"] = "Напомнить по просроченным";
+$lang["task_control_nudge_preview"] = "Текст напоминания";
+$lang["task_control_nudge_confirm"] = "Отправить напоминание в %s просроченных задач? Комментарий уйдёт от вашего имени.";
+$lang["task_control_nudge_done"] = "Напоминание отправлено: %s. Ошибок: %s.";
 
 return $lang;

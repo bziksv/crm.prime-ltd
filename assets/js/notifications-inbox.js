@@ -179,6 +179,54 @@
         );
     }
 
+    function tryMergeGroupedItem(item) {
+        if (!item || !item.is_unread) {
+            return false;
+        }
+
+        var ticketId = parseInt(item.ticket_id, 10) || 0;
+        var taskId = parseInt(item.task_id, 10) || 0;
+        if (!ticketId && !taskId) {
+            return false;
+        }
+
+        var $existing = $(".js-notification-inbox-item").filter(function () {
+            var $el = $(this);
+            if (ticketId) {
+                return (parseInt($el.attr("data-ticket-id"), 10) || 0) === ticketId;
+            }
+            return (parseInt($el.attr("data-task-id"), 10) || 0) === taskId;
+        }).first();
+
+        if (!$existing.length) {
+            return false;
+        }
+
+        var existingIds = String($existing.attr("data-ids") || $existing.attr("data-id") || "")
+            .split(",")
+            .map(function (v) { return parseInt(v, 10); })
+            .filter(Boolean);
+        var incomingIds = (item.ids && item.ids.length ? item.ids : [item.id])
+            .map(function (v) { return parseInt(v, 10); })
+            .filter(Boolean);
+        var merged = existingIds.slice();
+        incomingIds.forEach(function (id) {
+            if (merged.indexOf(id) === -1) {
+                merged.push(id);
+            }
+        });
+
+        $existing.attr("data-ids", merged.join(","));
+        var $badge = $existing.find(".notifications-inbox-badge");
+        if ($badge.length) {
+            $badge.text(merged.length);
+        } else {
+            $existing.find(".notifications-inbox-item-meta").prepend('<span class="notifications-inbox-badge">' + merged.length + "</span>");
+        }
+
+        return true;
+    }
+
     function appendItems(items, reset) {
         var $list = getListEl();
 
@@ -196,6 +244,9 @@
 
         var html = "";
         items.forEach(function (item) {
+            if (!reset && tryMergeGroupedItem(item)) {
+                return;
+            }
             var group = getDateGroupLabel(item.created_at);
             if (group && group !== lastDateGroup) {
                 html += '<div class="notifications-inbox-date-group">' + group + "</div>";
@@ -204,7 +255,9 @@
             html += buildItemHtml(item);
         });
 
-        $list.append(html);
+        if (html) {
+            $list.append(html);
+        }
     }
 
     function setLoading(isLoading) {
@@ -289,7 +342,11 @@
                 }
 
                 appendItems(response.data, reset);
-                state.skip += (response.data || []).length;
+                if (typeof response.next_skip !== "undefined" && response.next_skip !== null) {
+                    state.skip = parseInt(response.next_skip, 10) || 0;
+                } else {
+                    state.skip += (response.data || []).length;
+                }
                 var hasMore = !!(response.hasMore && (response.data || []).length);
                 updateLoadMore(hasMore);
                 setActiveItem(activeNotificationId);

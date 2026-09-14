@@ -1,0 +1,177 @@
+<div id="page-content" class="page-wrapper clearfix">
+    <div class="task-control-page">
+        <div class="task-control-header">
+            <div>
+                <h4 class="mb5"><?php echo app_lang("task_control"); ?></h4>
+                <div class="text-off"><?php echo app_lang("task_control_lead"); ?></div>
+            </div>
+            <div class="task-control-header-actions">
+                <?php echo anchor(get_uri("tasks/all_tasks"), "<i data-feather='arrow-left' class='icon-16'></i> " . app_lang("tasks"), array("class" => "btn btn-default")); ?>
+                <button type="button" class="btn btn-danger" id="task-control-nudge-btn" <?php echo empty($overdue_tasks) ? "disabled" : ""; ?>>
+                    <i data-feather="megaphone" class="icon-16"></i>
+                    <?php echo app_lang("task_control_nudge_overdue"); ?>
+                    <?php if (!empty($overdue_tasks)) { ?>
+                        <span class="badge bg-light text-dark ms-1"><?php echo count($overdue_tasks); ?></span>
+                    <?php } ?>
+                </button>
+            </div>
+        </div>
+
+        <div class="task-control-stats">
+            <div class="task-control-stat is-overdue">
+                <div class="task-control-stat-value"><?php echo count($overdue_tasks); ?></div>
+                <div class="task-control-stat-label"><?php echo app_lang("task_control_overdue"); ?></div>
+            </div>
+            <div class="task-control-stat is-review">
+                <div class="task-control-stat-value"><?php echo count($review_tasks); ?></div>
+                <div class="task-control-stat-label"><?php echo app_lang("task_control_on_review"); ?></div>
+            </div>
+        </div>
+
+        <div class="task-control-nudge-preview">
+            <strong><?php echo app_lang("task_control_nudge_preview"); ?>:</strong>
+            <div class="task-control-nudge-text"><?php echo nl2br(htmlspecialchars($nudge_message)); ?></div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="card task-control-card">
+                    <div class="card-header">
+                        <strong><?php echo app_lang("task_control_overdue"); ?></strong>
+                        <span class="badge bg-danger"><?php echo count($overdue_tasks); ?></span>
+                    </div>
+                    <div class="card-body p0">
+                        <?php if (empty($overdue_tasks)) { ?>
+                            <div class="task-control-empty"><?php echo app_lang("no_data"); ?></div>
+                        <?php } else { ?>
+                            <div class="task-control-list">
+                                <?php foreach ($overdue_tasks as $task) {
+                                    echo view("tasks/control_task_row", array("task" => $task, "kind" => "overdue"));
+                                } ?>
+                            </div>
+                        <?php } ?>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card task-control-card">
+                    <div class="card-header">
+                        <strong><?php echo app_lang("task_control_on_review"); ?></strong>
+                        <span class="badge bg-warning text-dark"><?php echo count($review_tasks); ?></span>
+                    </div>
+                    <div class="card-body p0">
+                        <?php if (empty($review_tasks)) { ?>
+                            <div class="task-control-empty"><?php echo app_lang("no_data"); ?></div>
+                        <?php } else { ?>
+                            <div class="task-control-list">
+                                <?php foreach ($review_tasks as $task) {
+                                    echo view("tasks/control_task_row", array("task" => $task, "kind" => "review"));
+                                } ?>
+                            </div>
+                        <?php } ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.task-control-page { padding: 16px 18px 28px; }
+.task-control-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+.task-control-header h4 { margin: 0; font-weight: 700; }
+.task-control-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.task-control-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.task-control-stat {
+    min-width: 160px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+.task-control-stat-value { font-size: 28px; font-weight: 700; line-height: 1; }
+.task-control-stat.is-overdue .task-control-stat-value { color: #b42318; }
+.task-control-stat.is-review .task-control-stat-value { color: #b54708; }
+.task-control-stat-label { margin-top: 4px; color: #667085; font-size: 13px; }
+.task-control-nudge-preview {
+    background: #fff8f3;
+    border: 1px solid #f9dbaf;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    color: #7a2e0e;
+}
+.task-control-nudge-text { margin-top: 6px; white-space: pre-wrap; }
+.task-control-card { border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+.task-control-card .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: #fff;
+}
+.task-control-list { max-height: 70vh; overflow: auto; }
+.task-control-row {
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+    border-top: 1px solid #eef0f3;
+    align-items: flex-start;
+}
+.task-control-row:hover { background: #fafbfc; }
+.task-control-row-main { min-width: 0; flex: 1; }
+.task-control-row-title { font-weight: 600; color: #1d2939; }
+.task-control-row-meta { margin-top: 3px; font-size: 12px; color: #667085; }
+.task-control-row-deadline { color: #b42318; font-weight: 600; white-space: nowrap; font-size: 12px; }
+.task-control-empty { padding: 28px 16px; text-align: center; color: #98a2b3; }
+</style>
+
+<script>
+$(document).ready(function () {
+    if (typeof feather !== "undefined") {
+        feather.replace();
+    }
+
+    $("#task-control-nudge-btn").on("click", function () {
+        var $btn = $(this);
+        if ($btn.prop("disabled") || $btn.data("busy")) {
+            return;
+        }
+
+        var confirmText = <?php echo json_encode(sprintf(app_lang("task_control_nudge_confirm"), count($overdue_tasks))); ?>;
+        if (!window.confirm(confirmText)) {
+            return;
+        }
+
+        $btn.data("busy", true).addClass("disabled");
+        appLoader.show();
+
+        $.ajax({
+            url: "<?php echo get_uri('tasks/control_nudge_overdue'); ?>",
+            type: "POST",
+            dataType: "json",
+            success: function (result) {
+                if (result && result.success) {
+                    appAlert.success(result.message, {duration: 8000});
+                } else {
+                    appAlert.error((result && result.message) || <?php echo json_encode(app_lang("error_occurred")); ?>);
+                }
+            },
+            error: function () {
+                appAlert.error(<?php echo json_encode(app_lang("error_occurred")); ?>);
+            },
+            complete: function () {
+                appLoader.hide();
+                $btn.data("busy", false).removeClass("disabled");
+            }
+        });
+    });
+});
+</script>

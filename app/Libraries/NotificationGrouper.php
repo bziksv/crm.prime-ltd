@@ -38,21 +38,23 @@ class NotificationGrouper
         return $notifications;
     }
 
-    private function create_new_index(object $notification): int
+    private function create_new_index(object $notification): string
     {
-        $index = (int) $notification->id;
-
+        // Already read — keep as unique rows (no grouping)
         if ($this->is_read($notification)) {
-            return $index;
+            return "id_" . (int) $notification->id;
+        }
+
+        // Prefix keys so task #2084 and ticket #2084 never collide
+        if ($this->is_ticket($notification)) {
+            return "ticket_" . (int) $notification->ticket_id;
         }
 
         if ($this->is_task($notification)) {
-            $index = (int) $notification->task_id;
-        } elseif ($this->is_ticket($notification)) {
-            $index = (int) $notification->ticket_id;
+            return "task_" . (int) $notification->task_id;
         }
 
-        return $index;
+        return "id_" . (int) $notification->id;
     }
 
     private function is_task(object $notification): bool
@@ -76,7 +78,8 @@ class NotificationGrouper
 
     private function is_read($notification): bool
     {
-        return (int) $notification->is_read === 1;
+        // FIND_IN_SET returns 0 when unread, or 1..N position when read
+        return (int) $notification->is_read > 0;
     }
 
     private function is_newer(object $candidate, object $current): bool
