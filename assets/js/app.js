@@ -4610,7 +4610,12 @@ showHideAppTableColumn = function (tableInstance, columnIndex, visible) {
 
         $(".app-popover").remove();
         $("body").append(popoverDom);
-        feather.replace();
+        // Unknown data-feather names throw (toSvg of undefined) and abort select2 init
+        try {
+            feather.replace();
+        } catch (e) {
+            console.warn("feather.replace failed", e);
+        }
 
         //apply select2/datepicker on popover content
         var $inputField = $("#" + tempId);

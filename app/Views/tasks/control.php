@@ -8,7 +8,7 @@
             <div class="task-control-header-actions">
                 <?php echo anchor(get_uri("tasks/all_tasks"), "<i data-feather='arrow-left' class='icon-16'></i> " . app_lang("tasks"), array("class" => "btn btn-default")); ?>
                 <button type="button" class="btn btn-danger" id="task-control-nudge-btn" <?php echo empty($overdue_tasks) ? "disabled" : ""; ?>>
-                    <i data-feather="megaphone" class="icon-16"></i>
+                    <i data-feather="bell" class="icon-16"></i>
                     <?php echo app_lang("task_control_nudge_overdue"); ?>
                     <?php if (!empty($overdue_tasks)) { ?>
                         <span class="badge bg-light text-dark ms-1"><?php echo count($overdue_tasks); ?></span>
