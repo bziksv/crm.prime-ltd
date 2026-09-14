@@ -153,6 +153,11 @@
         var entityHtml = entity ? '<div class="notifications-inbox-entity">' + entity + "</div>" : "";
         var projectHtml = project && project !== entity ? '<div class="notifications-inbox-entity">' + project + "</div>" : "";
         var previewHtml = preview ? '<div class="notifications-inbox-item-preview">' + preview + "</div>" : "";
+        var statusHtml = "";
+        if (item.task_status_label) {
+            var statusColor = String(item.task_status_color || "#98a2b3").replace(/[^#a-fA-F0-9(),.%\s-]/g, "");
+            statusHtml = '<span class="notifications-inbox-task-status" style="background-color:' + statusColor + '">' + escapeHtml(item.task_status_label) + "</span>";
+        }
 
         return (
             '<div role="button" tabindex="0" class="notifications-inbox-item js-notification-inbox-item' + unreadClass + '" data-id="' + item.id + '" data-ids="' + (item.ids || [item.id]).join(",") + '" data-ticket-id="' + (item.ticket_id || "") + '" data-task-id="' + (item.task_id || "") + '" data-date-group="' + getDateGroupLabel(item.created_at) + '">' +
@@ -162,7 +167,7 @@
                         '<div class="notifications-inbox-item-title">' + title + "</div>" +
                         '<span class="notifications-inbox-item-meta">' + badge + '<span class="notifications-inbox-time">' + (item.time_label || "") + "</span></span>" +
                     "</div>" +
-                    '<div class="notifications-inbox-event">' + eventLabel + "</div>" +
+                    '<div class="notifications-inbox-event">' + eventLabel + statusHtml + "</div>" +
                     entityHtml +
                     projectHtml +
                     previewHtml +

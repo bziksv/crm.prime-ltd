@@ -956,6 +956,7 @@ class Notifications_model extends Crud_model {
         $project_comments_table = $this->db->prefixTable('project_comments');
         $project_files_table = $this->db->prefixTable('project_files');
         $tasks_table = $this->db->prefixTable('tasks');
+        $task_status_table = $this->db->prefixTable('task_status');
         $leave_applications_table = $this->db->prefixTable('leave_applications');
         $tickets_table = $this->db->prefixTable('tickets');
         $ticket_comments_table = $this->db->prefixTable('ticket_comments');
@@ -1031,6 +1032,9 @@ class Notifications_model extends Crud_model {
                  $estimates_table.meta_data AS estimate_meta_data,
                  $proposals_table.meta_data AS proposal_meta_data,
                  $tasks_table.title AS task_title,
+                 $task_status_table.title AS task_status_title,
+                 $task_status_table.key_name AS task_status_key_name,
+                 $task_status_table.color AS task_status_color,
                  $events_table.title AS event_title,    
                  $tickets_table.title AS ticket_title,
                  $ticket_comments_table.description AS ticket_comment_description,
@@ -1053,6 +1057,7 @@ class Notifications_model extends Crud_model {
         LEFT JOIN $project_comments_table ON $project_comments_table.id=$notifications_table.project_comment_id
         LEFT JOIN $project_files_table ON $project_files_table.id=$notifications_table.project_file_id
         LEFT JOIN $tasks_table ON $tasks_table.id=$notifications_table.task_id
+        LEFT JOIN $task_status_table ON $task_status_table.id=$tasks_table.status_id AND $task_status_table.deleted=0
         LEFT JOIN $contracts_table ON $contracts_table.id=$notifications_table.contract_id
         LEFT JOIN $estimates_table ON $estimates_table.id=$notifications_table.estimate_id
         LEFT JOIN $proposals_table ON $proposals_table.id=$notifications_table.proposal_id

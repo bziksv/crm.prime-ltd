@@ -560,6 +560,20 @@ class Notifications extends Security_Controller {
             $avatar_initial = strtoupper(substr($actor["name"], 0, 1));
         }
 
+        $task_status_label = "";
+        $task_status_color = "";
+        if (!empty($notification->task_id)) {
+            $status_key = trim((string) ($notification->task_status_key_name ?? ""));
+            $status_title = trim((string) ($notification->task_status_title ?? ""));
+            if ($status_key !== "") {
+                $translated = app_lang($status_key);
+                $task_status_label = ($translated && $translated !== $status_key) ? $translated : ($status_title ?: $status_key);
+            } else {
+                $task_status_label = $status_title;
+            }
+            $task_status_color = trim((string) ($notification->task_status_color ?? ""));
+        }
+
         return array(
             "id" => (int) $notification->id,
             "ids" => $notification_ids,
@@ -575,6 +589,8 @@ class Notifications extends Security_Controller {
             "is_unread" => empty($notification->is_read),
             "ticket_id" => !empty($notification->ticket_id) ? (int) $notification->ticket_id : 0,
             "task_id" => !empty($notification->task_id) ? (int) $notification->task_id : 0,
+            "task_status_label" => $task_status_label,
+            "task_status_color" => $task_status_color,
             "url" => get_array_value($url_attributes_array, "url") ?: "#",
             "group_count" => count($notification_ids),
         );
