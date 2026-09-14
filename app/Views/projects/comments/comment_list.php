@@ -115,6 +115,9 @@ foreach ($comments as $comment) {
 
                         <?php
                         $files = unserialize($comment->files);
+                        if (!is_array($files)) {
+                            $files = array();
+                        }
                         $total_files = count($files);
                         echo view("includes/timeline_preview", array("files" => $files, "view" => "project"));
                         ?>

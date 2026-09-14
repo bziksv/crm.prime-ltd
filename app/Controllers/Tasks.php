@@ -4681,7 +4681,7 @@ class Tasks extends Security_Controller {
                 "customer_feedback_id" => 0,
                 "comment_id" => 0,
                 "description" => $message,
-                "files" => "",
+                "files" => serialize(array()),
             );
 
             $save_id = $this->Project_comments_model->save_comment($data);
