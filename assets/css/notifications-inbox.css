@@ -107,33 +107,27 @@ body:has(.notifications-list-page) .main-scrollable-page {
 }
 
 .notifications-filters-bar {
-    display: flex;
-    align-items: center;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
     gap: 8px;
-    flex-wrap: nowrap;
+    align-items: center;
     width: 100%;
-    overflow: visible;
     min-height: 34px;
 }
 
 .notifications-filter-field {
-    flex: 0 1 150px;
-    min-width: 110px;
+    min-width: 0;
+    max-width: 100%;
     position: relative;
     z-index: 1;
     height: 34px;
     display: flex;
     align-items: center;
+    overflow: hidden;
 }
 
 .notifications-filter-field.is-event {
-    flex: 1 1 220px;
-    min-width: 180px;
-}
-
-.notifications-filter-field.is-narrow {
-    flex: 0 1 140px;
-    min-width: 120px;
+    grid-column: 1 / -1;
 }
 
 .notifications-filters-actions {
@@ -141,10 +135,11 @@ body:has(.notifications-list-page) .main-scrollable-page {
     align-items: center;
     gap: 6px;
     flex: 0 0 auto;
-    margin-left: auto;
+    margin-left: 0;
     position: relative;
     z-index: 1;
     height: 34px;
+    white-space: nowrap;
 }
 
 .notifications-filters-actions .btn {
@@ -179,6 +174,7 @@ body:has(.notifications-list-page) .main-scrollable-page {
 .notifications-filters-panel .select2-container {
     display: block !important;
     width: 100% !important;
+    max-width: 100% !important;
     height: 34px !important;
     margin: 0 !important;
     vertical-align: middle !important;
@@ -294,7 +290,8 @@ body:has(.notifications-list-page) .main-scrollable-page {
     height: 34px !important;
     min-height: 34px !important;
     max-height: 34px !important;
-    overflow: hidden !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
     margin: 0 !important;
     padding: 3px 8px !important;
     border: 1px solid #d0d5dd !important;
@@ -303,12 +300,15 @@ body:has(.notifications-list-page) .main-scrollable-page {
     background-image: none !important;
     box-shadow: none !important;
     cursor: text !important;
-    display: block !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
     box-sizing: border-box !important;
+    white-space: nowrap !important;
 }
 
 .notifications-filters-panel .select2-container-multi .select2-choices .select2-search-choice {
-    margin: 2px 4px 2px 0 !important;
+    margin: 0 4px 0 0 !important;
     padding: 0 20px 0 8px !important;
     height: 22px !important;
     line-height: 22px !important;
@@ -319,11 +319,12 @@ body:has(.notifications-list-page) .main-scrollable-page {
     box-shadow: none !important;
     color: #344054 !important;
     font-size: 12px !important;
-    max-width: calc(100% - 12px);
-    overflow: hidden;
-    text-overflow: ellipsis;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
     white-space: nowrap;
-    float: left !important;
+    float: none !important;
+    flex: 0 0 auto !important;
     position: relative !important;
 }
 
@@ -347,7 +348,9 @@ body:has(.notifications-list-page) .main-scrollable-page {
     margin: 0 !important;
     padding: 0 !important;
     height: 26px !important;
-    float: left !important;
+    float: none !important;
+    flex: 1 1 40px !important;
+    min-width: 40px !important;
     display: block !important;
 }
 
@@ -359,7 +362,8 @@ body:has(.notifications-list-page) .main-scrollable-page {
     line-height: 26px !important;
     color: #344054 !important;
     background: transparent !important;
-    min-width: 140px !important;
+    min-width: 40px !important;
+    width: 100% !important;
     box-shadow: none !important;
     border: 0 !important;
 }
@@ -369,15 +373,26 @@ body:has(.notifications-list-page) .select2-drop {
     z-index: 10050 !important;
 }
 
-@media (max-width: 1100px) {
+/* Select2 по умолчанию прячет уже выбранные пункты — на хронике
+   при URL с ticket_* кажется, что опций заявок в списке нет */
+body:has(.notifications-list-page) .select2-results .select2-selected {
+    display: list-item;
+    opacity: 0.55;
+}
+
+@media (max-width: 900px) {
     .notifications-filters-bar {
-        flex-wrap: wrap;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .notifications-filter-field.is-event {
+        grid-column: 1 / -1;
     }
 
     .notifications-filters-actions {
-        margin-left: 0;
-        width: 100%;
+        grid-column: 1 / -1;
         justify-content: flex-end;
+        width: 100%;
     }
 }
 

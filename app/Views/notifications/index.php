@@ -138,7 +138,7 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="<?php echo base_url('assets/css/notifications-inbox.css?v=20260830e'); ?>">
+<link rel="stylesheet" href="<?php echo base_url('assets/css/notifications-inbox.css?v=20260914e'); ?>">
 <link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-panel.css?v=20260831s'); ?>">
 <script type="text/javascript">
     window.notificationInboxListUrl = "<?php echo get_uri('notifications/inbox_list_data'); ?>";
@@ -154,11 +154,19 @@
             feather.replace();
         }
         var select2Opts = { width: "100%", allowClear: true };
-        $('#notification_event_filter').select2($.extend({}, select2Opts, {
+        var $eventFilter = $('#notification_event_filter');
+        var eventFilterRaw = $.trim($eventFilter.val() || "");
+        var eventFilterIds = eventFilterRaw
+            ? eventFilterRaw.split(",").map(function (v) { return $.trim(v); }).filter(Boolean)
+            : [];
+        $eventFilter.select2($.extend({}, select2Opts, {
             multiple: true,
             data: <?php echo json_encode($event_dropdown); ?>,
             placeholder: <?php echo json_encode(app_lang('notification_filter')); ?>
         }));
+        if (eventFilterIds.length) {
+            $eventFilter.select2("val", eventFilterIds);
+        }
         $('#notification_is_read_filter').select2($.extend({}, select2Opts, { data: <?php echo json_encode($is_read_dropdown); ?> }));
         $('#notification_grouped_filter').select2($.extend({}, select2Opts, { data: <?php echo json_encode($grouped_dropdown); ?> }));
         $('#notification_projects_filter').select2($.extend({}, select2Opts, { data: <?php echo json_encode($projects_dropdown); ?> }));
