@@ -466,9 +466,24 @@ if ($total_sub_tasks) {
 
                             <div id="comment-pin-container" class="mb-4"></div>
 
-                            <div class="box-title"><span><?php echo app_lang("task_timeline"); ?></span></div>
+                            <div class="task-timeline-header">
+                                <div class="box-title mb0"><span><?php echo app_lang("task_timeline"); ?></span></div>
+                                <button type="button"
+                                        class="btn btn-default btn-sm task-timeline-hide-actions-btn"
+                                        id="task-timeline-hide-actions-btn"
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top"
+                                        title="<?php echo app_lang('task_timeline_hide_actions_help'); ?>">
+                                    <i data-feather="eye-off" class="icon-14 task-timeline-hide-icon-off"></i>
+                                    <i data-feather="eye" class="icon-14 task-timeline-hide-icon-on hide"></i>
+                                    <span class="task-timeline-hide-label"><?php echo app_lang("task_timeline_hide_actions"); ?></span>
+                                </button>
+                            </div>
+                            <div class="task-timeline-hide-hint text-off mb10">
+                                <?php echo app_lang("task_timeline_hide_actions_help"); ?>
+                            </div>
 
-                            <div class="comment-list-container task-timeline-feed">
+                            <div class="comment-list-container task-timeline-feed" id="task-timeline-feed">
                                 <?php
                                 echo view("tasks/timeline_feed", array(
                                     "timeline_items" => isset($timeline_items) ? $timeline_items : array(),
@@ -492,3 +507,48 @@ if ($total_sub_tasks) {
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    var storageKey = "task_timeline_hide_actions";
+    var $feed = $("#task-timeline-feed");
+    var $btn = $("#task-timeline-hide-actions-btn");
+    if (!$feed.length || !$btn.length) {
+        return;
+    }
+
+    var labels = {
+        hide: <?php echo json_encode(app_lang("task_timeline_hide_actions")); ?>,
+        show: <?php echo json_encode(app_lang("task_timeline_show_actions")); ?>
+    };
+
+    function applyState(hidden) {
+        $feed.toggleClass("is-actions-hidden", hidden);
+        $btn.toggleClass("is-active", hidden);
+        $btn.find(".task-timeline-hide-icon-off").toggleClass("hide", hidden);
+        $btn.find(".task-timeline-hide-icon-on").toggleClass("hide", !hidden);
+        $btn.find(".task-timeline-hide-label").text(hidden ? labels.show : labels.hide);
+        try {
+            localStorage.setItem(storageKey, hidden ? "1" : "0");
+        } catch (e) {}
+        if (typeof feather !== "undefined") {
+            try { feather.replace(); } catch (e) {}
+        }
+    }
+
+    var initialHidden = false;
+    try {
+        initialHidden = localStorage.getItem(storageKey) === "1";
+    } catch (e) {}
+
+    applyState(initialHidden);
+
+    $btn.off("click.taskTimelineHide").on("click.taskTimelineHide", function () {
+        applyState(!$feed.hasClass("is-actions-hidden"));
+    });
+
+    if (typeof $btn.tooltip === "function") {
+        $btn.tooltip({container: "body"});
+    }
+})();
+</script>

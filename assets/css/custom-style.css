@@ -3415,6 +3415,42 @@ a.pm-file-row-main:hover .pm-file-name {
 }
 
 /* Task unified timeline (comments + activity) */
+.task-timeline-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 8px 0 4px;
+}
+.task-timeline-header .box-title {
+    flex: 1 1 auto;
+    min-width: 120px;
+    margin-bottom: 0;
+}
+.task-timeline-hide-actions-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    color: #475467;
+    border-color: #d0d5dd;
+    background: #fff;
+}
+.task-timeline-hide-actions-btn.is-active {
+    color: #175cd3;
+    border-color: #b2ccff;
+    background: #eff8ff;
+}
+.task-timeline-hide-hint {
+    font-size: 12px;
+    line-height: 1.4;
+    margin-top: 2px;
+}
+.task-timeline-feed.is-actions-hidden .task-timeline-activity {
+    display: none !important;
+}
+
 .task-timeline-feed .task-timeline-activity {
     background: #fafbfc;
     border-radius: 8px;
