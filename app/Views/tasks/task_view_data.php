@@ -479,9 +479,6 @@ if ($total_sub_tasks) {
                                     <span class="task-timeline-hide-label"><?php echo app_lang("task_timeline_hide_actions"); ?></span>
                                 </button>
                             </div>
-                            <div class="task-timeline-hide-hint text-off mb10">
-                                <?php echo app_lang("task_timeline_hide_actions_help"); ?>
-                            </div>
 
                             <div class="comment-list-container task-timeline-feed" id="task-timeline-feed">
                                 <?php

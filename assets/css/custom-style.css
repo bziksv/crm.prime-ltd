@@ -3442,11 +3442,6 @@ a.pm-file-row-main:hover .pm-file-name {
     border-color: #b2ccff;
     background: #eff8ff;
 }
-.task-timeline-hide-hint {
-    font-size: 12px;
-    line-height: 1.4;
-    margin-top: 2px;
-}
 .task-timeline-feed.is-actions-hidden .task-timeline-activity {
     display: none !important;
 }
