@@ -4713,12 +4713,18 @@ class Tasks extends Security_Controller {
 
         $today = get_my_local_time("Y-m-d");
 
+        $user_list_sql = "GROUP_CONCAT($users_table.id, '--::--', $users_table.first_name, ' ', $users_table.last_name, '--::--', IFNULL($users_table.image,''), '--::--', $users_table.user_type)";
+
         $sql = "SELECT t.*,
                     p.title AS project_title,
                     ts.title AS status_title,
                     ts.key_name AS status_key_name,
                     ts.color AS status_color,
-                    CONCAT(u.first_name, ' ', u.last_name) AS assigned_to_user
+                    CONCAT(u.first_name, ' ', u.last_name) AS assigned_to_user,
+                    u.image AS assigned_to_avatar,
+                    u.user_type AS assigned_to_user_type,
+                    (SELECT $user_list_sql FROM $users_table WHERE $users_table.deleted=0 AND FIND_IN_SET($users_table.id, t.collaborators)) AS collaborator_list,
+                    (SELECT $user_list_sql FROM $users_table WHERE $users_table.deleted=0 AND FIND_IN_SET($users_table.id, t.executors)) AS executors_list
                 FROM $tasks_table t
                 INNER JOIN $activity_logs_table al
                     ON al.log_type = 'task'

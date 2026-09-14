@@ -60,5 +60,6 @@ $lang["task_control_nudge_overdue"] = "Nudge overdue tasks";
 $lang["task_control_nudge_preview"] = "Reminder text";
 $lang["task_control_nudge_confirm"] = "Send a reminder to %s overdue tasks? The comment will be posted from your account.";
 $lang["task_control_nudge_done"] = "Reminders sent: %s. Failed: %s.";
+$lang["task_control_auditor"] = "Auditor";
 
 return $lang;

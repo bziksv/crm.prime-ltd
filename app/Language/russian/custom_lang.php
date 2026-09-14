@@ -72,5 +72,6 @@ $lang["task_control_nudge_overdue"] = "Напомнить по просроче�
 $lang["task_control_nudge_preview"] = "Текст напоминания";
 $lang["task_control_nudge_confirm"] = "Отправить напоминание в %s просроченных задач? Комментарий уйдёт от вашего имени.";
 $lang["task_control_nudge_done"] = "Напоминание отправлено: %s. Ошибок: %s.";
+$lang["task_control_auditor"] = "Аудитор";
 
 return $lang;
