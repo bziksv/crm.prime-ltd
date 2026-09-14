@@ -155,8 +155,11 @@
         var previewHtml = preview ? '<div class="notifications-inbox-item-preview">' + preview + "</div>" : "";
         var statusHtml = "";
         if (item.task_status_label) {
-            var statusColor = String(item.task_status_color || "#98a2b3").replace(/[^#a-fA-F0-9(),.%\s-]/g, "");
-            statusHtml = '<span class="notifications-inbox-task-status" style="background-color:' + statusColor + '">' + escapeHtml(item.task_status_label) + "</span>";
+            var statusColor = String(item.task_status_color || "#98a2b3").replace(/[^#a-fA-F0-9]/g, "");
+            if (!/^#[0-9a-fA-F]{3,8}$/.test(statusColor)) {
+                statusColor = "#98a2b3";
+            }
+            statusHtml = '<span class="notifications-inbox-task-status" style="--status-color:' + statusColor + '" title="' + escapeHtml(item.task_status_label) + '">' + escapeHtml(item.task_status_label) + "</span>";
         }
 
         return (
@@ -165,9 +168,9 @@
                 '<div class="notifications-inbox-item-body">' +
                     '<div class="notifications-inbox-item-top">' +
                         '<div class="notifications-inbox-item-title">' + title + "</div>" +
-                        '<span class="notifications-inbox-item-meta">' + badge + '<span class="notifications-inbox-time">' + (item.time_label || "") + "</span></span>" +
+                        '<span class="notifications-inbox-item-meta">' + statusHtml + badge + '<span class="notifications-inbox-time">' + (item.time_label || "") + "</span></span>" +
                     "</div>" +
-                    '<div class="notifications-inbox-event">' + eventLabel + statusHtml + "</div>" +
+                    '<div class="notifications-inbox-event">' + eventLabel + "</div>" +
                     entityHtml +
                     projectHtml +
                     previewHtml +

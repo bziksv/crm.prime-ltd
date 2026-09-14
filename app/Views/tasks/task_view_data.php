@@ -456,7 +456,7 @@ if ($total_sub_tasks) {
                         <?php echo form_close(); ?>
                     </div>
 
-                    <!--Task comment section-->
+                    <!-- Task timeline: comments + activity -->
                     <div class="clearfix">
                         <div class="b-t pt10 list-container">
 
@@ -466,10 +466,15 @@ if ($total_sub_tasks) {
 
                             <div id="comment-pin-container" class="mb-4"></div>
 
-                            <div class="box-title"><span>Комментарии</span></div>
+                            <div class="box-title"><span><?php echo app_lang("task_timeline"); ?></span></div>
 
-                            <div class="comment-list-container">
-                                <?php echo view("projects/comments/comment_list"); ?>
+                            <div class="comment-list-container task-timeline-feed">
+                                <?php
+                                echo view("tasks/timeline_feed", array(
+                                    "timeline_items" => isset($timeline_items) ? $timeline_items : array(),
+                                    "omit_comment_list_scripts" => false,
+                                ));
+                                ?>
                             </div>
 
                             <?php
@@ -487,10 +492,3 @@ if ($total_sub_tasks) {
         </div>
     </div>
 </div>
-
-<?php if ($login_user->user_type === "staff") { ?>
-    <div class="box-title"><span ><?php echo app_lang("activity"); ?></span></div>
-    <div class="pl15 pr15 mt15 list-container project-activity-logs-container">
-        <?php echo activity_logs_widget(array("limit" => 20, "offset" => 0, "log_type" => "task", "log_type_id" => $model_info->id)); ?>
-    </div>
-<?php } ?>

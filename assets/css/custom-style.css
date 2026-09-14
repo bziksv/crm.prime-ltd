@@ -3413,3 +3413,57 @@ a.pm-file-row-main:hover .pm-file-name {
     padding: 0 !important;
     line-height: 0 !important;
 }
+
+/* Task unified timeline (comments + activity) */
+.task-timeline-feed .task-timeline-activity {
+    background: #fafbfc;
+    border-radius: 8px;
+    border: 1px solid #eef0f3 !important;
+    border-bottom: 1px solid #eef0f3 !important;
+    margin-bottom: 10px !important;
+    padding: 4px 8px 4px 4px;
+}
+
+.task-timeline-feed .task-timeline-activity .card-title {
+    margin-bottom: 4px;
+}
+
+.task-timeline-feed .task-timeline-changes {
+    padding-left: 18px;
+    margin: 6px 0 0;
+    color: #475467;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.task-timeline-feed .task-timeline-changes li {
+    margin-bottom: 4px;
+}
+
+.task-timeline-feed .task-timeline-activity-body del,
+.task-timeline-feed .task-timeline-activity-body ins,
+.project-activity-logs-container del,
+.project-activity-logs-container ins {
+    display: inline !important;
+    position: static !important;
+    float: none !important;
+    padding: 0 2px !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    text-decoration: none !important;
+    vertical-align: baseline !important;
+}
+
+.task-timeline-feed .task-timeline-activity-body del,
+.project-activity-logs-container del {
+    text-decoration: line-through !important;
+    color: #98a2b3 !important;
+    margin-right: 4px !important;
+}
+
+.task-timeline-feed .task-timeline-activity-body ins,
+.project-activity-logs-container ins {
+    color: #1d2939 !important;
+    font-weight: 600 !important;
+}

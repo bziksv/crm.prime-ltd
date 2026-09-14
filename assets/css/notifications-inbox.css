@@ -738,10 +738,6 @@ body:has(.notifications-list-page) .select2-results .select2-selected {
 }
 
 .notifications-inbox-event {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
     font-size: 11px;
     color: #475467;
     margin-bottom: 1px;
@@ -752,10 +748,9 @@ body:has(.notifications-list-page) .select2-results .select2-selected {
 .notifications-inbox-task-status {
     display: inline-block;
     flex: 0 1 auto;
-    max-width: 100%;
+    max-width: 108px;
     padding: 1px 7px;
-    border-radius: 999px;
-    color: #fff;
+    border-radius: 6px;
     font-size: 10px;
     font-weight: 600;
     line-height: 1.35;
@@ -763,6 +758,9 @@ body:has(.notifications-list-page) .select2-results .select2-selected {
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: middle;
+    color: var(--status-color, #667085);
+    background: color-mix(in srgb, var(--status-color, #98a2b3) 14%, #fff);
+    border: 1px solid color-mix(in srgb, var(--status-color, #98a2b3) 28%, #fff);
 }
 
 .notifications-inbox-entity {

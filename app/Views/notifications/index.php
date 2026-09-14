@@ -138,7 +138,7 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="<?php echo base_url('assets/css/notifications-inbox.css?v=20260914f'); ?>">
+<link rel="stylesheet" href="<?php echo base_url('assets/css/notifications-inbox.css?v=20260914g'); ?>">
 <link rel="stylesheet" href="<?php echo base_url('assets/css/tickets-panel.css?v=20260831s'); ?>">
 <script type="text/javascript">
     window.notificationInboxListUrl = "<?php echo get_uri('notifications/inbox_list_data'); ?>";
@@ -146,7 +146,7 @@
     window.notificationInboxFilters = <?php echo json_encode($inbox_filters ?: new stdClass()); ?>;
 </script>
 <script src="<?php echo base_url('assets/js/tickets-panel.js?v=20260831a'); ?>"></script>
-<script src="<?php echo base_url('assets/js/notifications-inbox.js?v=20260914f'); ?>"></script>
+<script src="<?php echo base_url('assets/js/notifications-inbox.js?v=20260914g'); ?>"></script>
 
 <script>
     $(document).ready(function () {

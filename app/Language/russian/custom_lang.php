@@ -63,5 +63,6 @@ $lang["copy_task_link"] = "Копировать ссылку на задачу";
 $lang["task_link_copied"] = "Ссылка на задачу скопирована!";
 $lang["copy_ticket_link"] = "Копировать ссылку на заявку";
 $lang["ticket_link_copied"] = "Ссылка на заявку скопирована!";
+$lang["task_timeline"] = "Лента";
 
 return $lang;

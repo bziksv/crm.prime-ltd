@@ -1784,6 +1784,7 @@ class Tasks extends Security_Controller {
         $view_data['comments_next_offset'] = count($comments);
         $view_data['comments_page_size'] = $comment_page_size;
         $view_data['task_id'] = $task_id;
+        $view_data['timeline_items'] = $this->_build_task_timeline_items($task_id, $comments);
 
         $view_data['personal_note'] = $this->Task_personal_notes_models->get_one_where(["created_by" => $this->login_user->id, "task_id" => $task_id]);
 
@@ -1981,6 +1982,63 @@ class Tasks extends Security_Controller {
     }
 
     /* checklist */
+
+    /**
+     * Merge task comments and activity logs into one newest-first timeline.
+     */
+    private function _build_task_timeline_items($task_id, $comments = array()) {
+        $timeline_items = array();
+
+        foreach ($comments as $comment) {
+            if (!$comment || empty($comment->created_at)) {
+                continue;
+            }
+            $timeline_items[] = array(
+                "type" => "comment",
+                "created_at" => $comment->created_at,
+                "comment" => $comment,
+            );
+        }
+
+        if ($this->login_user->user_type === "staff") {
+            $logs = $this->Activity_logs_model->get_details(array(
+                "log_type" => "task",
+                "log_type_id" => $task_id,
+                "limit" => 300,
+                "offset" => 0,
+                "user_id" => $this->login_user->id,
+                "is_admin" => $this->login_user->is_admin,
+                "user_type" => $this->login_user->user_type,
+                "show_assigned_tasks_only" => 0,
+            ));
+
+            foreach ($logs->result as $log) {
+                $changes_array = get_change_logs_array($log->changes, $log->log_type, $log->action);
+                if ($log->action === "updated" && (!count($changes_array) || $log->changes === "")) {
+                    continue;
+                }
+                $timeline_items[] = array(
+                    "type" => "activity",
+                    "created_at" => $log->created_at,
+                    "log" => $log,
+                );
+            }
+        }
+
+        usort($timeline_items, function ($a, $b) {
+            $cmp = strcmp((string) $b["created_at"], (string) $a["created_at"]);
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+            // Stable-ish: comments before activity when timestamps match
+            if ($a["type"] === $b["type"]) {
+                return 0;
+            }
+            return $a["type"] === "comment" ? -1 : 1;
+        });
+
+        return $timeline_items;
+    }
 
     //save an activity log for a checklist item change so it appears in the task's activity block
     private function _save_checklist_activity_log($task_info, $action, $title) {
