@@ -460,13 +460,15 @@ class Notifications extends Security_Controller {
             return "";
         }
 
-        $ts = strtotime($datetime);
+        // Notifications are stored in UTC; convert to app timezone before labeling
+        $local = convert_date_utc_to_local($datetime);
+        $ts = strtotime($local);
         if (!$ts) {
             return "";
         }
 
-        $today = strtotime("today");
-        $yesterday = strtotime("yesterday");
+        $today = strtotime(get_my_local_time("Y-m-d") . " 00:00:00");
+        $yesterday = strtotime("-1 day", $today);
 
         if ($ts >= $today) {
             return date("H:i", $ts);
@@ -588,6 +590,7 @@ class Notifications extends Security_Controller {
             "preview" => $preview,
             "project_title" => $notification->project_title ?: "",
             "created_at" => $notification->created_at,
+            "created_at_local" => convert_date_utc_to_local($notification->created_at),
             "time_label" => $this->_inbox_time_label($notification->created_at),
             "is_unread" => empty($notification->is_read),
             "ticket_id" => !empty($notification->ticket_id) ? (int) $notification->ticket_id : 0,

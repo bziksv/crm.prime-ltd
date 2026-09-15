@@ -163,7 +163,7 @@
         }
 
         return (
-            '<div role="button" tabindex="0" class="notifications-inbox-item js-notification-inbox-item' + unreadClass + '" data-id="' + item.id + '" data-ids="' + (item.ids || [item.id]).join(",") + '" data-ticket-id="' + (item.ticket_id || "") + '" data-task-id="' + (item.task_id || "") + '" data-date-group="' + getDateGroupLabel(item.created_at) + '">' +
+            '<div role="button" tabindex="0" class="notifications-inbox-item js-notification-inbox-item' + unreadClass + '" data-id="' + item.id + '" data-ids="' + (item.ids || [item.id]).join(",") + '" data-ticket-id="' + (item.ticket_id || "") + '" data-task-id="' + (item.task_id || "") + '" data-date-group="' + getDateGroupLabel(item.created_at_local || item.created_at) + '">' +
                 buildAvatar(item) +
                 '<div class="notifications-inbox-item-body">' +
                     '<div class="notifications-inbox-item-top">' +
@@ -247,7 +247,7 @@
             if (!reset && tryMergeGroupedItem(item)) {
                 return;
             }
-            var group = getDateGroupLabel(item.created_at);
+            var group = getDateGroupLabel(item.created_at_local || item.created_at);
             if (group && group !== lastDateGroup) {
                 html += '<div class="notifications-inbox-date-group">' + group + "</div>";
                 lastDateGroup = group;

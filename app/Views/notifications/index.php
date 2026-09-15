@@ -146,7 +146,7 @@
     window.notificationInboxFilters = <?php echo json_encode($inbox_filters ?: new stdClass()); ?>;
 </script>
 <script src="<?php echo base_url('assets/js/tickets-panel.js?v=20260831a'); ?>"></script>
-<script src="<?php echo base_url('assets/js/notifications-inbox.js?v=20260914h'); ?>"></script>
+<script src="<?php echo base_url('assets/js/notifications-inbox.js?v=20260915a'); ?>"></script>
 
 <script>
     $(document).ready(function () {
