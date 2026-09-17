@@ -199,8 +199,15 @@ class Left_menu {
                 $show_expenses_menu = true;
             }
 
-            $sidebar_menu["reports"] = array("name" => "reports", "url" => "reports/index", "class" => "pie-chart",
+            $reports_url = "reports/index";
+            if (get_setting("module_project_timesheet") && ($this->ci->login_user->is_admin || !get_array_value($permissions, "do_not_show_projects"))) {
+                // Open timesheets directly — reports/index remembers last tab in a cookie and can land on Expenses
+                $reports_url = "projects/all_timesheets";
+            }
+
+            $sidebar_menu["reports"] = array("name" => "reports", "url" => $reports_url, "class" => "pie-chart",
                 "sub_pages" => array(
+                    "reports/index",
                     "invoices/invoices_summary",
                     "orders/orders_summary",
                     "projects/all_timesheets",

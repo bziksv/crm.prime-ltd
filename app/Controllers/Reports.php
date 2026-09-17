@@ -12,23 +12,30 @@ class Reports extends Security_Controller {
     public function index() {
         $redirect_to = "";
         $reports = get_reports_topbar(true);
-        $count = 1;
+
+        // Prefer timesheets as the default landing report when available
         foreach ($reports as $report) {
-            if ($count == 1) {
+            $url = get_array_value($report, "url");
+            if ($url === "projects/all_timesheets") {
+                $redirect_to = $url;
+                break;
+            }
+        }
+
+        if (!$redirect_to) {
+            foreach ($reports as $report) {
                 if (get_array_value($report, "single_button") == 1) {
                     $redirect_to = get_array_value($report, "url");
-                } else {
-                    foreach (get_array_value($report, "dropdown_item") as $sub_page) {
-                        if ($count == 1) {
-                            $redirect_to = get_array_value($sub_page, "url");
-                        }
-                        $count++;
-                    }
+                    break;
                 }
-            } else {
-                continue;
+
+                $dropdown = get_array_value($report, "dropdown_item");
+                if (is_array($dropdown) && count($dropdown)) {
+                    $first = array_values($dropdown)[0];
+                    $redirect_to = get_array_value($first, "url");
+                    break;
+                }
             }
-            $count++;
         }
 
         $view_data["redirect_to"] = $redirect_to;
