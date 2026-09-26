@@ -4627,7 +4627,7 @@ class Tasks extends Security_Controller {
     }
 
     /**
-     * Control desk: overdue + "on review by setter" tasks created by current user.
+     * Control desk: overdue + review-by-setter (mine) + review-by-setter (everyone else).
      */
     function control() {
         $this->access_only_team_members();
@@ -4635,7 +4635,9 @@ class Tasks extends Security_Controller {
         $lists = $this->_get_task_control_lists($this->login_user->id);
         $view_data["overdue_tasks"] = $lists["overdue"];
         $view_data["review_tasks"] = $lists["review"];
+        $view_data["review_others_tasks"] = $lists["review_others"];
         $view_data["nudge_message"] = $this->_task_control_nudge_message();
+        $view_data["nudge_setters_message"] = $this->_task_control_nudge_setters_message();
 
         return $this->template->rander("tasks/control", $view_data);
     }
@@ -4647,11 +4649,24 @@ class Tasks extends Security_Controller {
     function control_nudge_overdue() {
         $this->access_only_team_members();
 
-        @set_time_limit(60);
+        $lists = $this->_get_task_control_lists($this->login_user->id);
+        $this->_control_nudge_batch($lists["overdue"], $this->_task_control_nudge_message());
+    }
+
+    /**
+     * Post reminder comments into status-6 tasks created by other users.
+     */
+    function control_nudge_setters() {
+        $this->access_only_team_members();
 
         $lists = $this->_get_task_control_lists($this->login_user->id);
-        $overdue = $lists["overdue"];
-        $total = count($overdue);
+        $this->_control_nudge_batch($lists["review_others"], $this->_task_control_nudge_setters_message());
+    }
+
+    private function _control_nudge_batch($tasks, $message) {
+        @set_time_limit(60);
+
+        $total = count($tasks);
         if (!$total) {
             echo json_encode(array("success" => false, "message" => app_lang("no_data")));
             return;
@@ -4666,8 +4681,7 @@ class Tasks extends Security_Controller {
             $limit = 10;
         }
 
-        $batch = array_slice($overdue, $offset, $limit);
-        $message = $this->_task_control_nudge_message();
+        $batch = array_slice($tasks, $offset, $limit);
         $sent = 0;
         $failed = 0;
 
@@ -4721,6 +4735,10 @@ class Tasks extends Security_Controller {
         return "Внимание задача просрочена, проверьте ее, приступите к выполнению, скорректируйте сроки!";
     }
 
+    private function _task_control_nudge_setters_message() {
+        return "Внимание задача в статусе проверки: постановщику или аудитору проверить задачу";
+    }
+
     private function _get_task_control_lists($user_id) {
         $user_id = (int) $user_id;
         $db = $this->Tasks_model->db;
@@ -4734,7 +4752,7 @@ class Tasks extends Security_Controller {
 
         $user_list_sql = "GROUP_CONCAT($users_table.id, '--::--', $users_table.first_name, ' ', $users_table.last_name, '--::--', IFNULL($users_table.image,''), '--::--', $users_table.user_type)";
 
-        $sql = "SELECT t.*,
+        $select = "SELECT t.*,
                     p.title AS project_title,
                     ts.title AS status_title,
                     ts.key_name AS status_key_name,
@@ -4742,6 +4760,9 @@ class Tasks extends Security_Controller {
                     CONCAT(u.first_name, ' ', u.last_name) AS assigned_to_user,
                     u.image AS assigned_to_avatar,
                     u.user_type AS assigned_to_user_type,
+                    al.created_by AS setter_user_id,
+                    CONCAT(cu.first_name, ' ', cu.last_name) AS setter_user,
+                    cu.image AS setter_avatar,
                     (SELECT $user_list_sql FROM $users_table WHERE $users_table.deleted=0 AND FIND_IN_SET($users_table.id, t.collaborators)) AS collaborator_list,
                     (SELECT $user_list_sql FROM $users_table WHERE $users_table.deleted=0 AND FIND_IN_SET($users_table.id, t.executors)) AS executors_list
                 FROM $tasks_table t
@@ -4749,19 +4770,28 @@ class Tasks extends Security_Controller {
                     ON al.log_type = 'task'
                     AND al.log_type_id = t.id
                     AND al.action = 'created'
-                    AND al.created_by = $user_id
                     AND al.deleted = 0
                 LEFT JOIN $projects_table p ON p.id = t.project_id
                 LEFT JOIN $task_status_table ts ON ts.id = t.status_id AND ts.deleted = 0
                 LEFT JOIN $users_table u ON u.id = t.assigned_to
+                LEFT JOIN $users_table cu ON cu.id = al.created_by";
+
+        $mine_sql = $select . "
                 WHERE t.deleted = 0
+                  AND al.created_by = $user_id
                   AND (
                         (t.status_id != 3 AND t.deadline IS NOT NULL AND DATE(t.deadline) < " . $db->escape($today) . ")
                         OR t.status_id = 6
                   )
                 ORDER BY t.deadline ASC, t.id DESC";
 
-        $rows = $db->query($sql)->getResult();
+        $others_sql = $select . "
+                WHERE t.deleted = 0
+                  AND t.status_id = 6
+                  AND al.created_by != $user_id
+                ORDER BY t.id DESC";
+
+        $rows = $db->query($mine_sql)->getResult();
         $overdue = array();
         $review = array();
         $seen_overdue = array();
@@ -4784,9 +4814,19 @@ class Tasks extends Security_Controller {
             }
         }
 
+        $review_others = array();
+        $seen_others = array();
+        foreach ($db->query($others_sql)->getResult() as $row) {
+            if (empty($seen_others[$row->id])) {
+                $review_others[] = $row;
+                $seen_others[$row->id] = true;
+            }
+        }
+
         return array(
             "overdue" => $overdue,
             "review" => $review,
+            "review_others" => $review_others,
         );
     }
 

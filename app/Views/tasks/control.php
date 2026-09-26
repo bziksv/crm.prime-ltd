@@ -14,6 +14,13 @@
                         <span class="badge bg-light text-dark ms-1"><?php echo count($overdue_tasks); ?></span>
                     <?php } ?>
                 </button>
+                <button type="button" class="btn btn-warning" id="task-control-nudge-setters-btn" <?php echo empty($review_others_tasks) ? "disabled" : ""; ?>>
+                    <i data-feather="bell" class="icon-16"></i>
+                    <?php echo app_lang("task_control_nudge_setters"); ?>
+                    <?php if (!empty($review_others_tasks)) { ?>
+                        <span class="badge bg-light text-dark ms-1"><?php echo count($review_others_tasks); ?></span>
+                    <?php } ?>
+                </button>
             </div>
         </div>
 
@@ -26,15 +33,25 @@
                 <div class="task-control-stat-value"><?php echo count($review_tasks); ?></div>
                 <div class="task-control-stat-label"><?php echo app_lang("task_control_on_review"); ?></div>
             </div>
+            <div class="task-control-stat is-review-others">
+                <div class="task-control-stat-value"><?php echo count($review_others_tasks); ?></div>
+                <div class="task-control-stat-label"><?php echo app_lang("task_control_on_review_others"); ?></div>
+            </div>
         </div>
 
-        <div class="task-control-nudge-preview">
-            <strong><?php echo app_lang("task_control_nudge_preview"); ?>:</strong>
-            <div class="task-control-nudge-text"><?php echo nl2br(htmlspecialchars($nudge_message)); ?></div>
+        <div class="task-control-nudge-previews">
+            <div class="task-control-nudge-preview is-overdue">
+                <strong><?php echo app_lang("task_control_nudge_preview"); ?> (<?php echo app_lang("task_control_nudge_overdue"); ?>):</strong>
+                <div class="task-control-nudge-text"><?php echo nl2br(htmlspecialchars($nudge_message)); ?></div>
+            </div>
+            <div class="task-control-nudge-preview is-setters">
+                <strong><?php echo app_lang("task_control_nudge_preview"); ?> (<?php echo app_lang("task_control_nudge_setters"); ?>):</strong>
+                <div class="task-control-nudge-text"><?php echo nl2br(htmlspecialchars($nudge_setters_message)); ?></div>
+            </div>
         </div>
 
         <div class="row">
-            <div class="col-lg-6">
+            <div class="col-lg-4">
                 <div class="card task-control-card">
                     <div class="card-header">
                         <strong><?php echo app_lang("task_control_overdue"); ?></strong>
@@ -53,7 +70,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
+            <div class="col-lg-4">
                 <div class="card task-control-card">
                     <div class="card-header">
                         <strong><?php echo app_lang("task_control_on_review"); ?></strong>
@@ -66,6 +83,25 @@
                             <div class="task-control-list">
                                 <?php foreach ($review_tasks as $task) {
                                     echo view("tasks/control_task_row", array("task" => $task, "kind" => "review"));
+                                } ?>
+                            </div>
+                        <?php } ?>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card task-control-card">
+                    <div class="card-header">
+                        <strong><?php echo app_lang("task_control_on_review_others"); ?></strong>
+                        <span class="badge bg-info text-dark"><?php echo count($review_others_tasks); ?></span>
+                    </div>
+                    <div class="card-body p0">
+                        <?php if (empty($review_others_tasks)) { ?>
+                            <div class="task-control-empty"><?php echo app_lang("no_data"); ?></div>
+                        <?php } else { ?>
+                            <div class="task-control-list">
+                                <?php foreach ($review_others_tasks as $task) {
+                                    echo view("tasks/control_task_row", array("task" => $task, "kind" => "review_others"));
                                 } ?>
                             </div>
                         <?php } ?>
@@ -99,14 +135,27 @@
 .task-control-stat-value { font-size: 28px; font-weight: 700; line-height: 1; }
 .task-control-stat.is-overdue .task-control-stat-value { color: #b42318; }
 .task-control-stat.is-review .task-control-stat-value { color: #b54708; }
+.task-control-stat.is-review-others .task-control-stat-value { color: #026aa2; }
 .task-control-stat-label { margin-top: 4px; color: #667085; font-size: 13px; }
+.task-control-nudge-previews {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
 .task-control-nudge-preview {
-    background: #fff8f3;
-    border: 1px solid #f9dbaf;
     border-radius: 10px;
     padding: 12px 14px;
-    margin-bottom: 16px;
+}
+.task-control-nudge-preview.is-overdue {
+    background: #fff8f3;
+    border: 1px solid #f9dbaf;
     color: #7a2e0e;
+}
+.task-control-nudge-preview.is-setters {
+    background: #eff8ff;
+    border: 1px solid #b2ddff;
+    color: #175cd3;
 }
 .task-control-nudge-text { margin-top: 6px; white-space: pre-wrap; }
 .task-control-card { border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
@@ -148,6 +197,7 @@
 .task-control-people-row.is-executor .task-control-people-label { color: #027a48; }
 .task-control-people-row.is-collaborator .task-control-people-label { color: #3538cd; }
 .task-control-people-row.is-auditor .task-control-people-label { color: #b54708; }
+.task-control-people-row.is-setter .task-control-people-label { color: #026aa2; }
 .task-control-people-list { display: flex; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
 .task-control-person {
     display: inline-flex;
@@ -201,84 +251,98 @@ $(document).ready(function () {
     }
     $("#app-loader").remove();
 
-    var nudgeDefaultHtml = $("#task-control-nudge-btn").html();
+    function bindNudgeButton(options) {
+        var $btn = $(options.button);
+        var defaultHtml = $btn.html();
 
-    function setNudgeProgress(doneCount, total) {
-        var label = <?php echo json_encode(app_lang("task_control_nudge_progress")); ?>;
-        $("#task-control-nudge-btn").html(label.replace("%s", doneCount).replace("%s", total));
-    }
-
-    function finishNudge($btn, sent, failed) {
-        $btn.data("busy", false).prop("disabled", false).removeClass("disabled");
-        $btn.html(nudgeDefaultHtml);
-        if (typeof feather !== "undefined") {
-            try { feather.replace(); } catch (e) {}
+        function setProgress(doneCount, total) {
+            var label = <?php echo json_encode(app_lang("task_control_nudge_progress")); ?>;
+            $btn.html(label.replace("%s", doneCount).replace("%s", total));
         }
-        appAlert.success(<?php echo json_encode(app_lang("task_control_nudge_done")); ?>.replace("%s", sent).replace("%s", failed), {duration: 8000});
-    }
 
-    function failNudge($btn, message) {
-        $btn.data("busy", false).prop("disabled", false).removeClass("disabled");
-        $btn.html(nudgeDefaultHtml);
-        if (typeof feather !== "undefined") {
-            try { feather.replace(); } catch (e) {}
-        }
-        appAlert.error(message || <?php echo json_encode(app_lang("error_occurred")); ?>);
-    }
-
-    function sendNudgeBatch($btn, offset, sentTotal, failedTotal) {
-        $.ajax({
-            url: "<?php echo get_uri('tasks/control_nudge_overdue'); ?>",
-            type: "POST",
-            dataType: "json",
-            timeout: 45000,
-            data: {
-                offset: offset,
-                limit: 10
-            },
-            success: function (result) {
-                if (!result || !result.success) {
-                    failNudge($btn, result && result.message);
-                    return;
-                }
-
-                var sent = sentTotal + (parseInt(result.sent, 10) || 0);
-                var failed = failedTotal + (parseInt(result.failed, 10) || 0);
-                var nextOffset = parseInt(result.next_offset, 10) || (offset + 10);
-                var total = parseInt(result.total, 10) || nextOffset;
-
-                setNudgeProgress(Math.min(nextOffset, total), total);
-
-                if (result.done) {
-                    finishNudge($btn, sent, failed);
-                    return;
-                }
-
-                // Keep the page usable between batches — no full-screen loader
-                setTimeout(function () {
-                    sendNudgeBatch($btn, nextOffset, sent, failed);
-                }, 150);
-            },
-            error: function () {
-                failNudge($btn);
+        function finish(sent, failed) {
+            $btn.data("busy", false).prop("disabled", false).removeClass("disabled");
+            $btn.html(defaultHtml);
+            if (typeof feather !== "undefined") {
+                try { feather.replace(); } catch (e) {}
             }
+            appAlert.success(<?php echo json_encode(app_lang("task_control_nudge_done")); ?>.replace("%s", sent).replace("%s", failed), {duration: 8000});
+        }
+
+        function fail(message) {
+            $btn.data("busy", false).prop("disabled", false).removeClass("disabled");
+            $btn.html(defaultHtml);
+            if (typeof feather !== "undefined") {
+                try { feather.replace(); } catch (e) {}
+            }
+            appAlert.error(message || <?php echo json_encode(app_lang("error_occurred")); ?>);
+        }
+
+        function sendBatch(offset, sentTotal, failedTotal) {
+            $.ajax({
+                url: options.url,
+                type: "POST",
+                dataType: "json",
+                timeout: 45000,
+                data: {
+                    offset: offset,
+                    limit: 10
+                },
+                success: function (result) {
+                    if (!result || !result.success) {
+                        fail(result && result.message);
+                        return;
+                    }
+
+                    var sent = sentTotal + (parseInt(result.sent, 10) || 0);
+                    var failed = failedTotal + (parseInt(result.failed, 10) || 0);
+                    var nextOffset = parseInt(result.next_offset, 10) || (offset + 10);
+                    var total = parseInt(result.total, 10) || nextOffset;
+
+                    setProgress(Math.min(nextOffset, total), total);
+
+                    if (result.done) {
+                        finish(sent, failed);
+                        return;
+                    }
+
+                    setTimeout(function () {
+                        sendBatch(nextOffset, sent, failed);
+                    }, 150);
+                },
+                error: function () {
+                    fail();
+                }
+            });
+        }
+
+        $btn.on("click", function () {
+            if ($btn.prop("disabled") || $btn.data("busy")) {
+                return;
+            }
+
+            if (!window.confirm(options.confirmText)) {
+                return;
+            }
+
+            $btn.data("busy", true).prop("disabled", true).addClass("disabled");
+            setProgress(0, options.total);
+            sendBatch(0, 0, 0);
         });
     }
 
-    $("#task-control-nudge-btn").on("click", function () {
-        var $btn = $(this);
-        if ($btn.prop("disabled") || $btn.data("busy")) {
-            return;
-        }
+    bindNudgeButton({
+        button: "#task-control-nudge-btn",
+        url: "<?php echo get_uri('tasks/control_nudge_overdue'); ?>",
+        confirmText: <?php echo json_encode(sprintf(app_lang("task_control_nudge_confirm"), count($overdue_tasks))); ?>,
+        total: <?php echo (int) count($overdue_tasks); ?>
+    });
 
-        var confirmText = <?php echo json_encode(sprintf(app_lang("task_control_nudge_confirm"), count($overdue_tasks))); ?>;
-        if (!window.confirm(confirmText)) {
-            return;
-        }
-
-        $btn.data("busy", true).prop("disabled", true).addClass("disabled");
-        setNudgeProgress(0, <?php echo (int) count($overdue_tasks); ?>);
-        sendNudgeBatch($btn, 0, 0, 0);
+    bindNudgeButton({
+        button: "#task-control-nudge-setters-btn",
+        url: "<?php echo get_uri('tasks/control_nudge_setters'); ?>",
+        confirmText: <?php echo json_encode(sprintf(app_lang("task_control_nudge_setters_confirm"), count($review_others_tasks))); ?>,
+        total: <?php echo (int) count($review_others_tasks); ?>
     });
 });
 </script>

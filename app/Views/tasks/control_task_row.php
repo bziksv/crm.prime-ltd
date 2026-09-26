@@ -37,7 +37,18 @@ if (!empty($task->assigned_to_user)) {
     );
 }
 
+$setter = array();
+if (!empty($task->setter_user)) {
+    $setter[] = array(
+        "name" => $task->setter_user,
+        "avatar" => get_avatar(isset($task->setter_avatar) ? $task->setter_avatar : ""),
+    );
+}
+
 // In this CRM: executors = исполнители, collaborators = участники, assigned_to = аудитор/назначенный
+if ($kind === "review_others" && $setter) {
+    $people_rows[] = array("label" => app_lang("task_control_setter"), "class" => "is-setter", "people" => $setter);
+}
 if ($executors) {
     $people_rows[] = array("label" => app_lang("executors"), "class" => "is-executor", "people" => $executors);
 }
