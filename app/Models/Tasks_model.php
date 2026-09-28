@@ -52,6 +52,13 @@ class Tasks_model extends Crud_model {
                 "linked_model" => model("App\Models\Users_model"),
                 "label_fields" => array("user_group_name"),
             ),
+            "auditors" => array(
+                "label" => app_lang("task_control_auditors"),
+                "type" => "foreign_key",
+                "link_type" => "user_group_list",
+                "linked_model" => model("App\Models\Users_model"),
+                "label_fields" => array("user_group_name"),
+            ),
             "milestone_id" => array(
                 "label" => app_lang("milestone"),
                 "type" => "foreign_key",

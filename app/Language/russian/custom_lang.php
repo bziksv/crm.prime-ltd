@@ -80,6 +80,16 @@ $lang["task_control_nudge_setters_confirm"] = "Отправить напомин
 $lang["task_control_nudge_done"] = "Напоминание отправлено: %s. Ошибок: %s.";
 $lang["task_control_nudge_progress"] = "Отправка… %s / %s";
 $lang["task_control_auditor"] = "Аудитор";
+$lang["task_control_auditors"] = "Аудиторы";
 $lang["task_control_setter"] = "Постановщик";
+$lang["task_control_release"] = "Отказаться от контроля";
+$lang["task_control_release_title"] = "Отказ от контроля";
+$lang["task_control_release_lead"] = "Задача перестанет отображаться в колонке «Просроченные — Постановщик Я». Сама задача и сроки не меняются.";
+$lang["task_control_release_need_auditor"] = "Перед отказом назначьте аудитора — того, кто будет контролировать задачу вместо вас. Можно выбрать несколько.";
+$lang["task_control_release_has_auditor"] = "Аудитор уже назначен. Подтвердите отказ от контроля.";
+$lang["task_control_release_select_auditor"] = "Выберите аудитора";
+$lang["task_control_release_confirm"] = "Отказаться от контроля";
+$lang["task_control_release_done"] = "Контроль снят: задача больше не в вашем списке просроченных.";
+$lang["task_control_release_auditor_required"] = "Сначала назначьте хотя бы одного аудитора.";
 
 return $lang;

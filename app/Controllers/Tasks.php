@@ -4639,6 +4639,13 @@ class Tasks extends Security_Controller {
         $view_data["nudge_message"] = $this->_task_control_nudge_message();
         $view_data["nudge_setters_message"] = $this->_task_control_nudge_setters_message();
 
+        $staff_dropdown = array();
+        $staff = $this->Users_model->get_details(array("status" => "active", "user_type" => "staff"))->getResult();
+        foreach ($staff as $member) {
+            $staff_dropdown[] = array("id" => (int) $member->id, "text" => $member->first_name . " " . $member->last_name);
+        }
+        $view_data["staff_dropdown"] = $staff_dropdown;
+
         return $this->template->rander("tasks/control", $view_data);
     }
 
@@ -4661,6 +4668,115 @@ class Tasks extends Security_Controller {
 
         $lists = $this->_get_task_control_lists($this->login_user->id);
         $this->_control_nudge_batch($lists["review_others"], $this->_task_control_nudge_setters_message());
+    }
+
+    /**
+     * Setter releases overdue control: task leaves «Просроченные — Постановщик Я».
+     * Requires at least one auditor (existing or newly selected, multi allowed).
+     */
+    function control_release_overdue() {
+        $this->access_only_team_members();
+        $this->validate_submitted_data(array(
+            "task_id" => "required|numeric",
+        ));
+
+        $task_id = (int) $this->request->getPost("task_id");
+        $user_id = (int) $this->login_user->id;
+        $task = $this->Tasks_model->get_one($task_id);
+
+        if (!$task || !$task->id || $task->deleted) {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+            return;
+        }
+
+        if (!$this->_user_is_task_setter($task_id, $user_id)) {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+            return;
+        }
+
+        if (!empty($task->setter_control_released)) {
+            echo json_encode(array("success" => true, "message" => app_lang("task_control_release_done"), "id" => $task_id));
+            return;
+        }
+
+        $auditor_ids = $this->_normalize_auditor_ids($this->request->getPost("auditor_ids"));
+        $existing_ids = $this->_task_auditor_ids($task);
+
+        if (!$auditor_ids && !$existing_ids) {
+            echo json_encode(array("success" => false, "message" => app_lang("task_control_release_auditor_required")));
+            return;
+        }
+
+        if ($auditor_ids) {
+            $existing_ids = $auditor_ids;
+        }
+
+        $data = array(
+            "auditors" => implode(",", $existing_ids),
+            "assigned_to" => (int) $existing_ids[0],
+            "setter_control_released" => 1,
+        );
+
+        $save_id = $this->Tasks_model->ci_save($data, $task_id);
+        if (!$save_id) {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+            return;
+        }
+
+        echo json_encode(array(
+            "success" => true,
+            "message" => app_lang("task_control_release_done"),
+            "id" => $task_id,
+        ));
+    }
+
+    private function _user_is_task_setter($task_id, $user_id) {
+        $db = $this->Tasks_model->db;
+        $activity_logs_table = $db->prefixTable("activity_logs");
+        $task_id = (int) $task_id;
+        $user_id = (int) $user_id;
+        $row = $db->query(
+            "SELECT id FROM $activity_logs_table
+             WHERE deleted=0 AND log_type='task' AND action='created'
+               AND log_type_id=$task_id AND created_by=$user_id
+             LIMIT 1"
+        )->getRow();
+        return $row ? true : false;
+    }
+
+    private function _normalize_auditor_ids($raw) {
+        if (is_string($raw) && $raw !== "") {
+            $raw = explode(",", $raw);
+        }
+        if (!is_array($raw)) {
+            return array();
+        }
+
+        $ids = array();
+        foreach ($raw as $id) {
+            $id = (int) $id;
+            if ($id > 0 && !in_array($id, $ids, true)) {
+                $ids[] = $id;
+            }
+        }
+        return $ids;
+    }
+
+    private function _task_auditor_ids($task) {
+        $ids = array();
+        if (!empty($task->auditors)) {
+            foreach (explode(",", $task->auditors) as $id) {
+                $id = (int) $id;
+                if ($id > 0 && !in_array($id, $ids, true)) {
+                    $ids[] = $id;
+                }
+            }
+        }
+        $assigned = isset($task->assigned_to) ? (int) $task->assigned_to : 0;
+        if ($assigned > 0 && !in_array($assigned, $ids, true)) {
+            array_unshift($ids, $assigned);
+        }
+        return $ids;
     }
 
     private function _control_nudge_batch($tasks, $message) {
@@ -4764,7 +4880,8 @@ class Tasks extends Security_Controller {
                     CONCAT(cu.first_name, ' ', cu.last_name) AS setter_user,
                     cu.image AS setter_avatar,
                     (SELECT $user_list_sql FROM $users_table WHERE $users_table.deleted=0 AND FIND_IN_SET($users_table.id, t.collaborators)) AS collaborator_list,
-                    (SELECT $user_list_sql FROM $users_table WHERE $users_table.deleted=0 AND FIND_IN_SET($users_table.id, t.executors)) AS executors_list
+                    (SELECT $user_list_sql FROM $users_table WHERE $users_table.deleted=0 AND FIND_IN_SET($users_table.id, t.executors)) AS executors_list,
+                    (SELECT $user_list_sql FROM $users_table WHERE $users_table.deleted=0 AND FIND_IN_SET($users_table.id, IFNULL(t.auditors, ''))) AS auditors_list
                 FROM $tasks_table t
                 INNER JOIN $activity_logs_table al
                     ON al.log_type = 'task'
@@ -4780,7 +4897,7 @@ class Tasks extends Security_Controller {
                 WHERE t.deleted = 0
                   AND al.created_by = $user_id
                   AND (
-                        (t.status_id != 3 AND t.deadline IS NOT NULL AND DATE(t.deadline) < " . $db->escape($today) . ")
+                        (t.status_id != 3 AND IFNULL(t.setter_control_released, 0) = 0 AND t.deadline IS NOT NULL AND DATE(t.deadline) < " . $db->escape($today) . ")
                         OR t.status_id = 6
                   )
                 ORDER BY t.deadline ASC, t.id DESC";
@@ -4798,6 +4915,7 @@ class Tasks extends Security_Controller {
                         t.assigned_to = $user_id
                         OR FIND_IN_SET($user_id, t.executors)
                         OR FIND_IN_SET($user_id, t.collaborators)
+                        OR FIND_IN_SET($user_id, IFNULL(t.auditors, ''))
                   )";
         }
 
@@ -4812,6 +4930,7 @@ class Tasks extends Security_Controller {
 
         foreach ($rows as $row) {
             $is_overdue = ((int) $row->status_id !== 3)
+                && empty($row->setter_control_released)
                 && $row->deadline
                 && is_date_exists($row->deadline)
                 && (substr($row->deadline, 0, 10) < $today);

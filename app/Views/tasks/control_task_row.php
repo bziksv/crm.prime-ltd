@@ -20,6 +20,7 @@ $parse_people_list = function ($list) {
             continue;
         }
         $people[] = array(
+            "id" => (int) get_array_value($parts, 0),
             "name" => $name,
             "avatar" => get_avatar(get_array_value($parts, 2)),
         );
@@ -29,9 +30,11 @@ $parse_people_list = function ($list) {
 
 $executors = $parse_people_list(isset($task->executors_list) ? $task->executors_list : "");
 $collaborators = $parse_people_list(isset($task->collaborator_list) ? $task->collaborator_list : "");
-$assigned = array();
-if (!empty($task->assigned_to_user)) {
-    $assigned[] = array(
+$auditors = $parse_people_list(isset($task->auditors_list) ? $task->auditors_list : "");
+
+if (!$auditors && !empty($task->assigned_to_user)) {
+    $auditors[] = array(
+        "id" => isset($task->assigned_to) ? (int) $task->assigned_to : 0,
         "name" => $task->assigned_to_user,
         "avatar" => get_avatar(isset($task->assigned_to_avatar) ? $task->assigned_to_avatar : ""),
     );
@@ -45,7 +48,15 @@ if (!empty($task->setter_user)) {
     );
 }
 
-// In this CRM: executors = исполнители, collaborators = участники, assigned_to = аудитор/назначенный
+$auditor_ids = array();
+foreach ($auditors as $auditor) {
+    if (!empty($auditor["id"])) {
+        $auditor_ids[] = (int) $auditor["id"];
+    }
+}
+$has_auditor = count($auditor_ids) > 0;
+
+// In this CRM: executors = исполнители, collaborators = участники, assigned_to/auditors = аудитор
 if ($kind === "review_others" && $setter) {
     $people_rows[] = array("label" => app_lang("task_control_setter"), "class" => "is-setter", "people" => $setter);
 }
@@ -55,11 +66,15 @@ if ($executors) {
 if ($collaborators) {
     $people_rows[] = array("label" => app_lang("collaborators"), "class" => "is-collaborator", "people" => $collaborators);
 }
-if ($assigned) {
-    $people_rows[] = array("label" => app_lang("task_control_auditor"), "class" => "is-auditor", "people" => $assigned);
+if ($auditors) {
+    $people_rows[] = array(
+        "label" => count($auditors) > 1 ? app_lang("task_control_auditors") : app_lang("task_control_auditor"),
+        "class" => "is-auditor",
+        "people" => $auditors,
+    );
 }
 ?>
-<div class="task-control-row">
+<div class="task-control-row" data-task-id="<?php echo (int) $task->id; ?>" data-kind="<?php echo htmlspecialchars($kind); ?>">
     <div class="task-control-row-main">
         <div class="task-control-row-title">
             <?php
@@ -100,6 +115,21 @@ if ($assigned) {
                         </div>
                     </div>
                 <?php } ?>
+            </div>
+        <?php } ?>
+        <?php if ($kind === "overdue") { ?>
+            <div class="task-control-row-actions">
+                <button
+                    type="button"
+                    class="btn btn-default btn-sm task-control-release-btn"
+                    data-task-id="<?php echo (int) $task->id; ?>"
+                    data-task-title="<?php echo htmlspecialchars("#" . $task->id . " — " . $task->title, ENT_QUOTES, "UTF-8"); ?>"
+                    data-has-auditor="<?php echo $has_auditor ? "1" : "0"; ?>"
+                    data-auditor-ids="<?php echo htmlspecialchars(implode(",", $auditor_ids), ENT_QUOTES, "UTF-8"); ?>"
+                >
+                    <i data-feather="user-minus" class="icon-14"></i>
+                    <?php echo app_lang("task_control_release"); ?>
+                </button>
             </div>
         <?php } ?>
     </div>

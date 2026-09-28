@@ -112,6 +112,38 @@
     </div>
 </div>
 
+<div class="modal fade" id="task-control-release-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content task-control-release-modal">
+            <div class="modal-header">
+                <h5 class="modal-title"><?php echo app_lang("task_control_release_title"); ?></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="task-control-release-task" id="task-control-release-task-title"></div>
+                <p class="task-control-release-lead"><?php echo app_lang("task_control_release_lead"); ?></p>
+                <div class="task-control-release-note is-ok" id="task-control-release-has-auditor">
+                    <?php echo app_lang("task_control_release_has_auditor"); ?>
+                </div>
+                <div class="task-control-release-note is-warn" id="task-control-release-need-auditor">
+                    <?php echo app_lang("task_control_release_need_auditor"); ?>
+                </div>
+                <div class="form-group mb0" id="task-control-release-auditors-wrap">
+                    <label for="task-control-release-auditors" class="font-weight-bold"><?php echo app_lang("task_control_release_select_auditor"); ?></label>
+                    <input type="text" id="task-control-release-auditors" class="form-control" placeholder="<?php echo app_lang("task_control_release_select_auditor"); ?>" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-bs-dismiss="modal"><?php echo app_lang("cancel"); ?></button>
+                <button type="button" class="btn btn-warning" id="task-control-release-confirm">
+                    <i data-feather="user-minus" class="icon-16"></i>
+                    <?php echo app_lang("task_control_release_confirm"); ?>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 .task-control-page { padding: 16px 18px 28px; }
 .task-control-header {
@@ -173,12 +205,36 @@
     padding: 12px 14px;
     border-top: 1px solid #eef0f3;
     align-items: flex-start;
+    transition: opacity .2s ease, transform .2s ease, max-height .25s ease, padding .25s ease, margin .25s ease;
+}
+.task-control-row.is-leaving {
+    opacity: 0;
+    transform: translateX(-12px);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin: 0;
+    overflow: hidden;
+    border-top-color: transparent;
 }
 .task-control-row:hover { background: #fafbfc; }
 .task-control-row-main { min-width: 0; flex: 1; }
 .task-control-row-title { font-weight: 600; color: #1d2939; }
 .task-control-row-meta { margin-top: 3px; font-size: 12px; color: #667085; }
 .task-control-row-deadline { color: #b42318; font-weight: 600; white-space: nowrap; font-size: 12px; padding-top: 2px; }
+.task-control-row-actions { margin-top: 10px; }
+.task-control-release-btn {
+    border-radius: 8px;
+    border-color: #e4e7ec;
+    color: #667085;
+    font-size: 12px;
+    padding: 4px 10px;
+}
+.task-control-release-btn:hover {
+    border-color: #f9dbaf;
+    background: #fff8f3;
+    color: #b54708;
+}
 .task-control-people { margin-top: 8px; display: grid; gap: 5px; }
 .task-control-people-row {
     display: grid;
@@ -230,6 +286,37 @@
     max-width: 160px;
 }
 .task-control-empty { padding: 28px 16px; text-align: center; color: #98a2b3; }
+.task-control-release-modal .modal-content { border-radius: 14px; overflow: hidden; }
+.task-control-release-modal .modal-header { border-bottom: 1px solid #eef0f3; }
+.task-control-release-modal .modal-footer { border-top: 1px solid #eef0f3; }
+.task-control-release-task {
+    font-weight: 700;
+    color: #1d2939;
+    margin-bottom: 8px;
+}
+.task-control-release-lead {
+    color: #667085;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+.task-control-release-note {
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+.task-control-release-note.is-ok {
+    background: #ecfdf3;
+    border: 1px solid #abefc6;
+    color: #067647;
+}
+.task-control-release-note.is-warn {
+    background: #fff8f3;
+    border: 1px solid #f9dbaf;
+    color: #b54708;
+}
+.task-control-release-note.is-hidden,
+#task-control-release-auditors-wrap.is-hidden { display: none; }
 @media (max-width: 767px) {
     .task-control-people-row { grid-template-columns: 1fr; gap: 3px; }
 }
@@ -250,6 +337,145 @@ $(document).ready(function () {
         appLoader.hide();
     }
     $("#app-loader").remove();
+
+    var staffDropdown = <?php echo json_encode($staff_dropdown); ?>;
+    var releaseState = { taskId: 0, hasAuditor: false };
+
+    function initReleaseSelect(selectedIds) {
+        var $input = $("#task-control-release-auditors");
+        if ($input.data("select2")) {
+            $input.select2("destroy");
+        }
+        $input.val("").select2({
+            multiple: true,
+            data: staffDropdown,
+            placeholder: <?php echo json_encode(app_lang("task_control_release_select_auditor")); ?>,
+            width: "100%"
+        });
+        if (selectedIds && selectedIds.length) {
+            $input.val(selectedIds).trigger("change");
+        }
+    }
+
+    function openReleaseModal($btn) {
+        releaseState.taskId = parseInt($btn.data("task-id"), 10) || 0;
+        releaseState.hasAuditor = String($btn.data("has-auditor")) === "1";
+        var title = $btn.data("task-title") || "";
+        var auditorIds = String($btn.data("auditor-ids") || "")
+            .split(",")
+            .map(function (id) { return parseInt(id, 10); })
+            .filter(function (id) { return id > 0; })
+            .map(String);
+
+        $("#task-control-release-task-title").text(title);
+
+        if (releaseState.hasAuditor) {
+            $("#task-control-release-has-auditor").removeClass("is-hidden");
+            $("#task-control-release-need-auditor").addClass("is-hidden");
+            $("#task-control-release-auditors-wrap").addClass("is-hidden");
+        } else {
+            $("#task-control-release-has-auditor").addClass("is-hidden");
+            $("#task-control-release-need-auditor").removeClass("is-hidden");
+            $("#task-control-release-auditors-wrap").removeClass("is-hidden");
+            initReleaseSelect(auditorIds);
+        }
+
+        var modalEl = document.getElementById("task-control-release-modal");
+        if (window.bootstrap && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        } else {
+            $("#task-control-release-modal").modal("show");
+        }
+
+        if (typeof feather !== "undefined") {
+            try { feather.replace(); } catch (e) {}
+        }
+    }
+
+    function closeReleaseModal() {
+        var modalEl = document.getElementById("task-control-release-modal");
+        if (window.bootstrap && bootstrap.Modal) {
+            var instance = bootstrap.Modal.getInstance(modalEl);
+            if (instance) {
+                instance.hide();
+            }
+        } else {
+            $("#task-control-release-modal").modal("hide");
+        }
+    }
+
+    function updateOverdueCount(delta) {
+        var $stat = $(".task-control-stat.is-overdue .task-control-stat-value");
+        var $badge = $(".task-control-card .card-header .badge.bg-danger").first();
+        var $nudgeBadge = $("#task-control-nudge-btn .badge");
+        var next = Math.max(0, (parseInt($stat.text(), 10) || 0) + delta);
+        $stat.text(next);
+        $badge.text(next);
+        if ($nudgeBadge.length) {
+            if (next > 0) {
+                $nudgeBadge.text(next);
+            } else {
+                $nudgeBadge.remove();
+                $("#task-control-nudge-btn").prop("disabled", true);
+            }
+        }
+    }
+
+    $(document).on("click", ".task-control-release-btn", function () {
+        openReleaseModal($(this));
+    });
+
+    $("#task-control-release-confirm").on("click", function () {
+        var $confirm = $(this);
+        if ($confirm.data("busy") || !releaseState.taskId) {
+            return;
+        }
+
+        var auditorIds = [];
+        if (!releaseState.hasAuditor) {
+            auditorIds = $("#task-control-release-auditors").val() || [];
+            if (!auditorIds.length) {
+                appAlert.error(<?php echo json_encode(app_lang("task_control_release_auditor_required")); ?>);
+                return;
+            }
+        }
+
+        $confirm.data("busy", true).prop("disabled", true).addClass("disabled");
+
+        $.ajax({
+            url: "<?php echo get_uri('tasks/control_release_overdue'); ?>",
+            type: "POST",
+            dataType: "json",
+            data: {
+                task_id: releaseState.taskId,
+                auditor_ids: auditorIds
+            },
+            success: function (result) {
+                $confirm.data("busy", false).prop("disabled", false).removeClass("disabled");
+                if (!result || !result.success) {
+                    appAlert.error((result && result.message) || <?php echo json_encode(app_lang("error_occurred")); ?>);
+                    return;
+                }
+
+                closeReleaseModal();
+                var $row = $('.task-control-row[data-task-id="' + releaseState.taskId + '"][data-kind="overdue"]');
+                $row.addClass("is-leaving");
+                setTimeout(function () {
+                    $row.remove();
+                    updateOverdueCount(-1);
+                    var $list = $(".task-control-card").first().find(".task-control-list");
+                    if ($list.length && !$list.children(".task-control-row").length) {
+                        $list.closest(".card-body").html('<div class="task-control-empty"><?php echo app_lang("no_data"); ?></div>');
+                    }
+                }, 220);
+                appAlert.success(result.message || <?php echo json_encode(app_lang("task_control_release_done")); ?>);
+            },
+            error: function () {
+                $confirm.data("busy", false).prop("disabled", false).removeClass("disabled");
+                appAlert.error(<?php echo json_encode(app_lang("error_occurred")); ?>);
+            }
+        });
+    });
 
     function bindNudgeButton(options) {
         var $btn = $(options.button);
