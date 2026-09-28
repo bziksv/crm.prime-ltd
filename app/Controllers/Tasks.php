@@ -4916,9 +4916,11 @@ class Tasks extends Security_Controller {
 
         $mine_sql = $select . "
                 WHERE t.deleted = 0
-                  AND al.created_by = $user_id
                   AND t.status_id = 6
-                  AND IFNULL(t.setter_control_released, 0) = 0
+                  AND (
+                        (al.created_by = $user_id AND IFNULL(t.setter_control_released, 0) = 0)
+                        OR FIND_IN_SET($user_id, IFNULL(t.auditors, ''))
+                  )
                 ORDER BY t.deadline ASC, t.id DESC";
 
         $overdue_sql = $select . "
