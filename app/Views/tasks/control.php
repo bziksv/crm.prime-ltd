@@ -238,7 +238,7 @@
 .task-control-people { margin-top: 8px; display: grid; gap: 5px; }
 .task-control-people-row {
     display: grid;
-    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-columns: 110px minmax(0, 1fr);
     gap: 8px;
     align-items: start;
 }
@@ -255,6 +255,11 @@
 .task-control-people-row.is-auditor .task-control-people-label { color: #b54708; }
 .task-control-people-row.is-setter .task-control-people-label { color: #026aa2; }
 .task-control-people-list { display: flex; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
+.task-control-person-empty {
+    font-size: 12px;
+    color: #d0d5dd;
+    padding-top: 2px;
+}
 .task-control-person {
     display: inline-flex;
     align-items: center;

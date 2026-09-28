@@ -6,8 +6,6 @@ if ($task->deadline && is_date_exists($task->deadline)) {
 }
 $project_title = $task->project_title ?: "";
 
-$people_rows = array();
-
 $parse_people_list = function ($list) {
     $people = array();
     if (!$list) {
@@ -28,23 +26,29 @@ $parse_people_list = function ($list) {
     return $people;
 };
 
+// Roles:
+// Постановщик = создатель задачи (activity_logs.created)
+// Исполнители = executors
+// Участники = collaborators
+// Аудитор = auditors (новое поле), иначе legacy assigned_to
+$setter = array();
+if (!empty($task->setter_user)) {
+    $setter[] = array(
+        "id" => isset($task->setter_user_id) ? (int) $task->setter_user_id : 0,
+        "name" => $task->setter_user,
+        "avatar" => get_avatar(isset($task->setter_avatar) ? $task->setter_avatar : ""),
+    );
+}
+
 $executors = $parse_people_list(isset($task->executors_list) ? $task->executors_list : "");
 $collaborators = $parse_people_list(isset($task->collaborator_list) ? $task->collaborator_list : "");
 $auditors = $parse_people_list(isset($task->auditors_list) ? $task->auditors_list : "");
 
-if (!$auditors && !empty($task->assigned_to_user)) {
+if (!$auditors && !empty($task->assigned_to_user) && !empty($task->assigned_to)) {
     $auditors[] = array(
-        "id" => isset($task->assigned_to) ? (int) $task->assigned_to : 0,
+        "id" => (int) $task->assigned_to,
         "name" => $task->assigned_to_user,
         "avatar" => get_avatar(isset($task->assigned_to_avatar) ? $task->assigned_to_avatar : ""),
-    );
-}
-
-$setter = array();
-if (!empty($task->setter_user)) {
-    $setter[] = array(
-        "name" => $task->setter_user,
-        "avatar" => get_avatar(isset($task->setter_avatar) ? $task->setter_avatar : ""),
     );
 }
 
@@ -56,23 +60,16 @@ foreach ($auditors as $auditor) {
 }
 $has_auditor = count($auditor_ids) > 0;
 
-// In this CRM: executors = исполнители, collaborators = участники, assigned_to/auditors = аудитор
-if ($kind === "review_others" && $setter) {
-    $people_rows[] = array("label" => app_lang("task_control_setter"), "class" => "is-setter", "people" => $setter);
-}
-if ($executors) {
-    $people_rows[] = array("label" => app_lang("executors"), "class" => "is-executor", "people" => $executors);
-}
-if ($collaborators) {
-    $people_rows[] = array("label" => app_lang("collaborators"), "class" => "is-collaborator", "people" => $collaborators);
-}
-if ($auditors) {
-    $people_rows[] = array(
+$people_rows = array(
+    array("label" => app_lang("task_control_setter"), "class" => "is-setter", "people" => $setter),
+    array("label" => app_lang("executors"), "class" => "is-executor", "people" => $executors),
+    array("label" => app_lang("collaborators"), "class" => "is-collaborator", "people" => $collaborators),
+    array(
         "label" => count($auditors) > 1 ? app_lang("task_control_auditors") : app_lang("task_control_auditor"),
         "class" => "is-auditor",
         "people" => $auditors,
-    );
-}
+    ),
+);
 ?>
 <div class="task-control-row" data-task-id="<?php echo (int) $task->id; ?>" data-kind="<?php echo htmlspecialchars($kind); ?>">
     <div class="task-control-row-main">
@@ -98,12 +95,12 @@ if ($auditors) {
             }
             ?>
         </div>
-        <?php if ($people_rows) { ?>
-            <div class="task-control-people">
-                <?php foreach ($people_rows as $row) { ?>
-                    <div class="task-control-people-row <?php echo $row["class"]; ?>">
-                        <span class="task-control-people-label"><?php echo htmlspecialchars($row["label"]); ?></span>
-                        <div class="task-control-people-list">
+        <div class="task-control-people">
+            <?php foreach ($people_rows as $row) { ?>
+                <div class="task-control-people-row <?php echo $row["class"]; ?>">
+                    <span class="task-control-people-label"><?php echo htmlspecialchars($row["label"]); ?></span>
+                    <div class="task-control-people-list">
+                        <?php if (!empty($row["people"])) { ?>
                             <?php foreach ($row["people"] as $person) { ?>
                                 <span class="task-control-person" title="<?php echo htmlspecialchars($person["name"]); ?>">
                                     <span class="avatar avatar-xs">
@@ -112,11 +109,13 @@ if ($auditors) {
                                     <span class="task-control-person-name"><?php echo htmlspecialchars($person["name"]); ?></span>
                                 </span>
                             <?php } ?>
-                        </div>
+                        <?php } else { ?>
+                            <span class="task-control-person-empty">—</span>
+                        <?php } ?>
                     </div>
-                <?php } ?>
-            </div>
-        <?php } ?>
+                </div>
+            <?php } ?>
+        </div>
         <?php if ($kind === "overdue") { ?>
             <div class="task-control-row-actions">
                 <button
