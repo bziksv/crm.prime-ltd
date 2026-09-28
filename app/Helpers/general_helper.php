@@ -1925,6 +1925,11 @@ if (!function_exists("get_update_task_info_anchor_data")) {
                 $executors = $extra_data;
             }
 
+            $auditors = "<span class='text-off'>" . app_lang("add") . " " . app_lang("auditors") . "<span>";
+            if ($model_info->auditors) {
+                $auditors = $extra_data;
+            }
+
             if ($type == "status") {
 
                 return $can_edit_tasks ? js_anchor($model_info->status_key_name ? app_lang($model_info->status_key_name) : $model_info->status_title, array('title' => "", "class" => "white-link", "data-id" => $model_info->id, "data-value" => $model_info->status_id, "data-act" => "update-task-info", "data-act-type" => "status_id")) : ($model_info->status_key_name ? app_lang($model_info->status_key_name) : $model_info->status_title);
@@ -1949,6 +1954,9 @@ if (!function_exists("get_update_task_info_anchor_data")) {
             } else if ($type == "executors") {
 
                 return $can_edit_tasks ? js_anchor($executors, array('title' => "", "class" => "", "data-id" => $model_info->id, "data-value" => $model_info->executors, "data-act" => "update-task-info", "data-act-type" => "executors")) : $extra_data;
+            } else if ($type == "auditors") {
+
+                return $can_edit_tasks ? js_anchor($auditors, array('title' => "", "class" => "", "data-id" => $model_info->id, "data-value" => $model_info->auditors, "data-act" => "update-task-info", "data-act-type" => "auditors")) : $extra_data;
             } else if ($type == "start_date") {
 
                 return $can_edit_tasks ? js_anchor($start_date, array('title' => "", "class" => "", "data-id" => $model_info->id, "data-value" => $model_info->start_date ? date("Y-m-d", strtotime($model_info->start_date)) : "", "data-act" => "update-task-info", "data-act-type" => "start_date")) : format_to_date($model_info->start_date, false);

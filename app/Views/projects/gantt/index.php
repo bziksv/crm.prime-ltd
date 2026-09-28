@@ -54,6 +54,12 @@ if (!$project_id) {
                     "name" => "gantt-members-dropdown",
                     "class" => "select2 w200 reload-gantt"
                 ));
+                echo form_input(array(
+                    "id" => "gantt-auditors-dropdown",
+                    "name" => "gantt-auditors-dropdown",
+                    "class" => "select2 w200 reload-gantt",
+                    "placeholder" => "- " . app_lang("auditors") . " -"
+                ));
             }
             ?>
             <?php
@@ -101,12 +107,13 @@ echo modal_anchor(get_uri("tasks/view"), "", array("id" => "show_task_hidden", "
 ?>
 
 <script type="text/javascript">
-    var loadGantt = function (group_by, milestoneId, userId, status, projectId, scrollToLast) {
+    var loadGantt = function (group_by, milestoneId, userId, status, projectId, scrollToLast, auditorId) {
         group_by = group_by || "milestones";
         milestoneId = milestoneId || "0";
         userId = userId || "0";
         status = status || "";
         projectId = projectId || "<?php echo $project_id; ?>";
+        auditorId = auditorId || "0";
 
         var scrollLeft = $("#gantt-chart .gantt-container").scrollLeft();
 
@@ -117,6 +124,9 @@ echo modal_anchor(get_uri("tasks/view"), "", array("id" => "show_task_hidden", "
             url: "<?php echo get_uri("tasks/gantt_data/"); ?>" + projectId + "/" + group_by + "/" + milestoneId + "/" + userId + "/" + status,
             type: 'POST',
             dataType: 'json',
+            data: {
+                auditors_user_id: auditorId
+            },
             success: function (result) {
                 appLoader.hide();
                 if (!result.length) {
@@ -259,6 +269,7 @@ echo modal_anchor(get_uri("tasks/view"), "", array("id" => "show_task_hidden", "
             $ganttProjects = $("#gantt-projects-dropdown"),
             $ganttMilestone = $("#gantt-milestone-dropdown"),
             $ganttMembers = $("#gantt-members-dropdown"),
+            $ganttAuditors = $("#gantt-auditors-dropdown"),
             $ganttStatus = $("#gantt-status-dropdown"),
             $ganttView = $("#gantt-view-dropdown");
 
@@ -266,11 +277,12 @@ echo modal_anchor(get_uri("tasks/view"), "", array("id" => "show_task_hidden", "
         var group_by = $ganttGroupBy.val() || "milestones" || "projects",
                 milestoneId = $ganttMilestone.val(),
                 userId = $("#gantt-members-dropdown").val(),
+                auditorId = $("#gantt-auditors-dropdown").val(),
                 status = $ganttStatus.val();
 
         var projectId = $ganttProjects.val() || "<?php echo $project_id; ?>";
 
-        loadGantt(group_by, milestoneId, userId, status, projectId, scrollToLast);
+        loadGantt(group_by, milestoneId, userId, status, projectId, scrollToLast, auditorId);
     }
 
     $(document).ready(function () {
@@ -287,6 +299,17 @@ echo modal_anchor(get_uri("tasks/view"), "", array("id" => "show_task_hidden", "
         if ($ganttMembers.length) {
             $ganttMembers.select2({
                 data: <?php echo $project_members_dropdown; ?>
+            });
+        }
+
+        if ($ganttAuditors.length) {
+            var auditorsData = <?php echo $project_members_dropdown; ?>;
+            if (auditorsData.length && auditorsData[0].text && auditorsData[0].text.indexOf("-") === 0) {
+                auditorsData = auditorsData.slice();
+                auditorsData[0] = {id: "", text: "- <?php echo app_lang('auditors'); ?> -"};
+            }
+            $ganttAuditors.select2({
+                data: auditorsData
             });
         }
 

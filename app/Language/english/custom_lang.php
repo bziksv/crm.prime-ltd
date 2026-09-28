@@ -69,6 +69,7 @@ $lang["task_control_nudge_done"] = "Reminders sent: %s. Failed: %s.";
 $lang["task_control_nudge_progress"] = "Sending… %s / %s";
 $lang["task_control_auditor"] = "Auditor";
 $lang["task_control_auditors"] = "Auditors";
+$lang["auditors"] = "Auditors";
 $lang["task_control_setter"] = "Setter";
 $lang["task_control_release"] = "Release control";
 $lang["task_control_release_title"] = "Release control";

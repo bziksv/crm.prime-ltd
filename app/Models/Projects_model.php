@@ -186,6 +186,17 @@ class Projects_model extends Crud_model {
             $where .= " AND $tasks_table.assigned_to=$assigned_to";
         }
 
+        $auditors_user_ids = $this->_get_clean_value($options, "auditors_user_ids");
+        if ($auditors_user_ids) {
+            if (!is_array($auditors_user_ids)) {
+                $auditors_user_ids = array($auditors_user_ids);
+            }
+            foreach ($auditors_user_ids as $auditors_user_id) {
+                $auditors_user_id = $this->db->escapeString($auditors_user_id);
+                $where .= " AND (FIND_IN_SET('$auditors_user_id', IFNULL($tasks_table.auditors, '')))";
+            }
+        }
+
         $status_id = $this->_get_clean_value($options, "status_id");
         if ($status_id) {
             $where .= " AND $tasks_table.status_id=$status_id";

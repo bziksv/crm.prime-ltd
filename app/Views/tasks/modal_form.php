@@ -203,6 +203,23 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <div class="row">
+                        <label for="auditors" class=" col-md-3"><?php echo app_lang('auditors'); ?></label>
+                        <div class="col-md-9" id="dropdown-apploader-section">
+                            <?php
+                            echo form_input(array(
+                                "id" => "auditors",
+                                "name" => "auditors",
+                                "value" => $model_info->auditors,
+                                "class" => "form-control",
+                                "placeholder" => app_lang('auditors')
+                            ));
+                            ?>
+                        </div>
+                    </div>
+                </div>
+
             <?php } ?>
 
             <div class="form-group">

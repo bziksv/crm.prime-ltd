@@ -44,14 +44,6 @@ $executors = $parse_people_list(isset($task->executors_list) ? $task->executors_
 $collaborators = $parse_people_list(isset($task->collaborator_list) ? $task->collaborator_list : "");
 $auditors = $parse_people_list(isset($task->auditors_list) ? $task->auditors_list : "");
 
-if (!$auditors && !empty($task->assigned_to_user) && !empty($task->assigned_to)) {
-    $auditors[] = array(
-        "id" => (int) $task->assigned_to,
-        "name" => $task->assigned_to_user,
-        "avatar" => get_avatar(isset($task->assigned_to_avatar) ? $task->assigned_to_avatar : ""),
-    );
-}
-
 $auditor_ids = array();
 foreach ($auditors as $auditor) {
     if (!empty($auditor["id"])) {

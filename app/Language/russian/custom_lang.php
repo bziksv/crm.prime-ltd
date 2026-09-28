@@ -10,6 +10,7 @@ $lang["hide_completed_checklist_items"] = "Скрыть закрытые";
 $lang["saved_note"] = "Заметка сохранена";
 $lang["personal_labels"] = "Личные ярлыки";
 $lang["executors"] = "Исполнители";
+$lang["auditors"] = "Аудиторы";
 $lang["enable_filter"] = "Включить фильтр";
 $lang["notification_filter"] = "Фильтр уведомлений";
 $lang["apply"] = "Применить";

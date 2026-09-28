@@ -53,7 +53,7 @@ class Tasks_model extends Crud_model {
                 "label_fields" => array("user_group_name"),
             ),
             "auditors" => array(
-                "label" => app_lang("task_control_auditors"),
+                "label" => app_lang("auditors"),
                 "type" => "foreign_key",
                 "link_type" => "user_group_list",
                 "linked_model" => model("App\Models\Users_model"),
@@ -299,6 +299,13 @@ class Tasks_model extends Crud_model {
             }
         }
 
+        $auditors_user_ids = $this->_get_clean_value($options, "auditors_user_ids");
+        if ($auditors_user_ids) {
+            foreach ($auditors_user_ids as $auditors_user_id) {
+                $where .= " AND (FIND_IN_SET('$auditors_user_id', IFNULL($tasks_table.auditors, '')))";
+            }
+        }
+
         $responsible_user_ids = $this->_get_clean_value($options, "responsible_user_ids");
         if ($responsible_user_ids) {
             $where .= " AND FIND_IN_SET($tasks_table.assigned_to,'$responsible_user_ids')";
@@ -494,6 +501,7 @@ class Tasks_model extends Crud_model {
                     $projects_table.title AS project_title, $milestones_table.title AS milestone_title, IF($tasks_table.deadline IS NULL, $milestones_table.due_date,$tasks_table.deadline) AS deadline,$ticket_table.title AS ticket_title,
                     (SELECT GROUP_CONCAT($users_table.id, '--::--', $users_table.first_name, ' ', $users_table.last_name, '--::--' , IFNULL($users_table.image,''), '--::--', $users_table.user_type) FROM $users_table WHERE $users_table.deleted=0 AND $users_table.status='active' AND FIND_IN_SET($users_table.id, $tasks_table.collaborators)) AS collaborator_list,
                     (SELECT GROUP_CONCAT($users_table.id, '--::--', $users_table.first_name, ' ', $users_table.last_name, '--::--' , IFNULL($users_table.image,''), '--::--', $users_table.user_type) FROM $users_table WHERE $users_table.deleted=0 AND $users_table.status='active' AND FIND_IN_SET($users_table.id, $tasks_table.executors)) AS executors_list,
+                    (SELECT GROUP_CONCAT($users_table.id, '--::--', $users_table.first_name, ' ', $users_table.last_name, '--::--' , IFNULL($users_table.image,''), '--::--', $users_table.user_type) FROM $users_table WHERE $users_table.deleted=0 AND $users_table.status='active' AND FIND_IN_SET($users_table.id, IFNULL($tasks_table.auditors, ''))) AS auditors_list,
                     $task_priority_table.title AS priority_title, $task_priority_table.icon AS priority_icon, $task_priority_table.color AS priority_color,
                     $clients_table.company_name,
                     $contracts_table.title AS contract_title,
@@ -744,6 +752,13 @@ class Tasks_model extends Crud_model {
         if ($executors_user_ids) {
             foreach ($executors_user_ids as $executors_user_id) {
                 $where .= " AND (FIND_IN_SET('$executors_user_id', $tasks_table.executors))";
+            }
+        }
+
+        $auditors_user_ids = $this->_get_clean_value($options, "auditors_user_ids");
+        if ($auditors_user_ids) {
+            foreach ($auditors_user_ids as $auditors_user_id) {
+                $where .= " AND (FIND_IN_SET('$auditors_user_id', IFNULL($tasks_table.auditors, '')))";
             }
         }
 

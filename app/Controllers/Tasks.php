@@ -955,6 +955,7 @@ class Tasks extends Security_Controller {
         $assigned_to = $this->request->getPost('assigned_to');
         $collaborators = $this->request->getPost('collaborators');
         $executors = $this->request->getPost('executors');
+        $auditors = $this->request->getPost('auditors');
         $recurring = $this->request->getPost('recurring') ? 1 : 0;
         $repeat_every = $this->request->getPost('repeat_every');
         $repeat_type = $this->request->getPost('repeat_type');
@@ -1044,6 +1045,7 @@ class Tasks extends Security_Controller {
             $data["assigned_to"] = $assigned_to;
             $data["collaborators"] = $collaborators;
             $data["executors"] = $executors;
+            $data["auditors"] = $auditors;
         }
 
         $data = clean_data($data);
@@ -1274,6 +1276,7 @@ class Tasks extends Security_Controller {
             "responsible_user_ids" => $responsible_user_ids,
             "member_user_ids" => $this->request->getPost('member_user_id'),
             "executors_user_ids" => $this->request->getPost('executors_user_id'),
+            "auditors_user_ids" => $this->request->getPost('auditors_user_id'),
             "deadline" => $this->request->getPost('deadline'),
             "status_ids" => $status,
             "milestone_id" => $milestone_id,
@@ -1454,6 +1457,12 @@ class Tasks extends Security_Controller {
             $executors = "-";
         }
 
+        $auditors = $this->_get_collaborators(isset($data->auditors_list) ? $data->auditors_list : "");
+
+        if (!$auditors) {
+            $auditors = "-";
+        }
+
 
         $checkbox_class = "checkbox-blank";
         if ($data->status_key_name === "done") {
@@ -1533,6 +1542,7 @@ class Tasks extends Security_Controller {
             $assigned_to,
             $executors,
             $collaborators,
+            $auditors,
             $status,
             $note,
         );
@@ -1766,6 +1776,7 @@ class Tasks extends Security_Controller {
 
         $view_data['collaborators'] = $this->_get_collaborators($model_info->collaborator_list, false);
         $view_data['executors'] = $this->_get_collaborators($model_info->executors_list, false);
+        $view_data['auditors'] = $this->_get_collaborators(isset($model_info->auditors_list) ? $model_info->auditors_list : "", false);
 
         $view_data['labels'] = make_labels_view_data($model_info->labels_list);
         $view_data['private_labels'] = make_labels_view_data($model_info->private_labels_list);
@@ -3084,11 +3095,13 @@ class Tasks extends Security_Controller {
         $member_user_ids = $this->request->getPost('member_user_id');
 
         $executors_user_ids = $this->request->getPost('executors_user_id');
+        $auditors_user_ids = $this->request->getPost('auditors_user_id');
 
         $options = array(
             "responsible_user_ids" => $responsible_user_ids,
             "member_user_ids" => $member_user_ids,
             "executors_user_ids" => $executors_user_ids,
+            "auditors_user_ids" => $auditors_user_ids,
             "project_id" => $project_id,
             "milestone_id" => $this->request->getPost('milestone_id'),
             "priority_ids" => $this->request->getPost('priority_id') ? implode(",", $this->request->getPost('priority_id')) : "",
@@ -3210,11 +3223,13 @@ class Tasks extends Security_Controller {
         $member_user_ids = $this->request->getPost('member_user_id');
 
         $executors_user_ids = $this->request->getPost('executors_user_id');
+        $auditors_user_ids = $this->request->getPost('auditors_user_id');
 
         $options = array(
             "responsible_user_ids" => $responsible_user_ids,
             "member_user_ids" => $member_user_ids,
             "executors_user_ids" => $executors_user_ids,
+            "auditors_user_ids" => $auditors_user_ids,
             "project_id" => $project_id,
             "assigned_to" => $this->request->getPost('assigned_to'),
             "milestone_id" => $this->request->getPost('milestone_id'),
@@ -3537,6 +3552,10 @@ class Tasks extends Security_Controller {
             $success_array["executors"] = $task_info->executors_list ? $this->_get_collaborators($task_info->executors_list, false) : "<span class='text-off'>" . app_lang("add") . " " . app_lang("executors") . "<span>";
         }
 
+        if ($data_field == "auditors") {
+            $success_array["auditors"] = $task_info->auditors_list ? $this->_get_collaborators($task_info->auditors_list, false) : "<span class='text-off'>" . app_lang("add") . " " . app_lang("auditors") . "<span>";
+        }
+
         if ($data_field == "start_date" || $data_field == "deadline") {
             $date = "-";
             if (is_date_exists($task_info->$data_field)) {
@@ -3654,6 +3673,7 @@ class Tasks extends Security_Controller {
         $member_user_ids = $this->request->getPost('member_user_id');
 
         $executors_user_ids = $this->request->getPost('executors_user_id');
+        $auditors_user_ids = $this->request->getPost('auditors_user_id');
 
         $custom_fields = $this->Custom_fields_model->get_available_fields_for_table("tasks", $this->login_user->is_admin, $this->login_user->user_type);
 
@@ -3670,6 +3690,7 @@ class Tasks extends Security_Controller {
             "responsible_user_ids" => $responsible_user_ids,
             "member_user_ids" => $member_user_ids,
             "executors_user_ids" => $executors_user_ids,
+            "auditors_user_ids" => $auditors_user_ids,
             "project_id" => $project_id,
             "context" => $context,
             "milestone_id" => $this->request->getPost('milestone_id'),
@@ -3790,6 +3811,11 @@ class Tasks extends Security_Controller {
             "milestone_id" => $milestone_id,
             "assigned_to" => $user_id
         );
+
+        $auditors_user_id = $this->request->getPost("auditors_user_id");
+        if ($auditors_user_id) {
+            $options["auditors_user_ids"] = array($auditors_user_id);
+        }
 
         if (!$status) {
             $options["exclude_status"] = 3; //don't show completed tasks by default
@@ -4713,7 +4739,6 @@ class Tasks extends Security_Controller {
 
         $data = array(
             "auditors" => implode(",", $existing_ids),
-            "assigned_to" => (int) $existing_ids[0],
             "setter_control_released" => 1,
         );
 
@@ -4771,10 +4796,6 @@ class Tasks extends Security_Controller {
                     $ids[] = $id;
                 }
             }
-        }
-        $assigned = isset($task->assigned_to) ? (int) $task->assigned_to : 0;
-        if ($assigned > 0 && !in_array($assigned, $ids, true)) {
-            array_unshift($ids, $assigned);
         }
         return $ids;
     }

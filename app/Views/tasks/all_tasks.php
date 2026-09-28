@@ -162,6 +162,12 @@ if (isset($selected_priority_id) && $selected_priority_id) {
                 },
                 {
                     class: "w200",
+                    name: "auditors_user_id",
+                    text: "<?php echo app_lang('auditors'); ?>",
+                    options: <?php echo $team_members_dropdown; ?>
+                },
+                {
+                    class: "w200",
                     name: "priority_id",
                     text: "<?php echo app_lang('priority'); ?>",
                     options: <?php echo $priorities_dropdown; ?>
@@ -198,13 +204,14 @@ if (isset($selected_priority_id) && $selected_priority_id) {
                 {title: "<?php echo app_lang('assigned_to') ?>", visible: showOption, order_by: "assigned_to"},
                 {title: "<?php echo app_lang('executors') ?>", visible: showOption},
                 {title: "<?php echo app_lang('collaborators') ?>", visible: showOption},
+                {title: "<?php echo app_lang('auditors') ?>", visible: showOption},
                 {title: "<?php echo app_lang('status') ?>", visible: showOption, order_by: "status"},
                 {title: "<?php echo app_lang('note') ?>", visible: showOption}
                 <?php echo $custom_field_headers; ?>,
                 {title: '<i data-feather="menu" class="icon-16"></i>', "class": "text-center option"}
             ],
-            printColumns: combineCustomFieldsColumns([1, 2, 4, 6, 7, 8, 9, 10, 12], '<?php echo $custom_field_headers; ?>'),
-            xlsColumns: combineCustomFieldsColumns([1, 2, 4, 6, 7, 8, 9, 10, 12], '<?php echo $custom_field_headers; ?>'),
+            printColumns: combineCustomFieldsColumns([1, 2, 4, 6, 7, 8, 9, 10, 11, 13], '<?php echo $custom_field_headers; ?>'),
+            xlsColumns: combineCustomFieldsColumns([1, 2, 4, 6, 7, 8, 9, 10, 11, 13], '<?php echo $custom_field_headers; ?>'),
             rowCallback: tasksTableRowCallback, //load this function from the task_table_common_script.php
             onRelaodCallback: function () {
                 hideBatchTasksBtn(true);

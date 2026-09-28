@@ -61,6 +61,12 @@
                 },
                 {
                     class: "w200",
+                    name: "auditors_user_id",
+                    text: "<?php echo app_lang('auditors'); ?>",
+                    options: <?php echo $team_members_dropdown; ?>
+                },
+                {
+                    class: "w200",
                     name: "priority_id",
                     text: "<?php echo app_lang('priority'); ?>",
                     options: <?php echo $priorities_dropdown; ?>

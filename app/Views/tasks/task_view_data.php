@@ -101,6 +101,13 @@ if ($total_sub_tasks) {
                         </div>
                     </div>
 
+                    <div class="col-md-12 mb15">
+                        <strong><?php echo app_lang('auditors') . ": "; ?> </strong>
+                        <div class="mt5">
+                            <?php echo get_update_task_info_anchor_data($model_info, "auditors", $can_edit_tasks, $auditors); ?>
+                        </div>
+                    </div>
+
                     <?php if ($model_info->ticket_id && $model_info->project_id) { ?>
                         <div class="col-md-12 mb15">
                             <strong><?php echo app_lang("ticket") . ": "; ?> </strong> <?php echo anchor(get_uri("tickets/view/" . $model_info->ticket_id), get_ticket_id($model_info->ticket_id) . " - " . $model_info->ticket_title); ?>
