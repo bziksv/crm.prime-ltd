@@ -4937,7 +4937,8 @@ class Tasks extends Security_Controller {
         $others_sql = $select . "
                 WHERE t.deleted = 0
                   AND t.status_id = 6
-                  AND al.created_by != $user_id";
+                  AND al.created_by != $user_id
+                  AND (t.auditors IS NULL OR t.auditors = '' OR FIND_IN_SET($user_id, t.auditors) = 0)";
 
         // Non-admins only see review-others tasks where they have a role;
         // otherwise everyone saw the whole company list (e.g. Denis with no role).
