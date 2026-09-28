@@ -4940,7 +4940,7 @@ class Tasks extends Security_Controller {
                 $seen_overdue[$row->id] = true;
             }
 
-            if ((int) $row->status_id === 6 && empty($seen_review[$row->id])) {
+            if ((int) $row->status_id === 6 && empty($row->setter_control_released) && empty($seen_review[$row->id])) {
                 $review[] = $row;
                 $seen_review[$row->id] = true;
             }

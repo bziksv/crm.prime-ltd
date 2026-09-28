@@ -116,12 +116,13 @@ $people_rows = array(
                 </div>
             <?php } ?>
         </div>
-        <?php if ($kind === "overdue") { ?>
+        <?php if ($kind === "overdue" || $kind === "review") { ?>
             <div class="task-control-row-actions">
                 <button
                     type="button"
                     class="btn btn-default btn-sm task-control-release-btn"
                     data-task-id="<?php echo (int) $task->id; ?>"
+                    data-task-kind="<?php echo htmlspecialchars($kind); ?>"
                     data-task-title="<?php echo htmlspecialchars("#" . $task->id . " — " . $task->title, ENT_QUOTES, "UTF-8"); ?>"
                     data-has-auditor="<?php echo $has_auditor ? "1" : "0"; ?>"
                     data-auditor-ids="<?php echo htmlspecialchars(implode(",", $auditor_ids), ENT_QUOTES, "UTF-8"); ?>"

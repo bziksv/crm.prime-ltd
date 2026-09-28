@@ -72,12 +72,12 @@ $lang["task_control_auditors"] = "Auditors";
 $lang["task_control_setter"] = "Setter";
 $lang["task_control_release"] = "Release control";
 $lang["task_control_release_title"] = "Release control";
-$lang["task_control_release_lead"] = "The task will leave your «Overdue — Setter: me» column. The task itself and deadlines stay unchanged.";
+$lang["task_control_release_lead"] = "The task will leave your «Setter: me» columns. The task itself and deadlines stay unchanged.";
 $lang["task_control_release_need_auditor"] = "Before releasing, assign an auditor who will control the task instead of you. You can pick more than one.";
 $lang["task_control_release_has_auditor"] = "An auditor is already assigned. Confirm release of control.";
 $lang["task_control_release_select_auditor"] = "Select auditor";
 $lang["task_control_release_confirm"] = "Release control";
-$lang["task_control_release_done"] = "Control released: the task is no longer in your overdue list.";
+$lang["task_control_release_done"] = "Control released: the task is no longer in your «Setter: me» columns.";
 $lang["task_control_release_auditor_required"] = "Assign at least one auditor first.";
 
 return $lang;

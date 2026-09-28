@@ -344,7 +344,7 @@ $(document).ready(function () {
     $("#app-loader").remove();
 
     var staffDropdown = <?php echo json_encode($staff_dropdown); ?>;
-    var releaseState = { taskId: 0, hasAuditor: false };
+    var releaseState = { taskId: 0, hasAuditor: false, kind: "overdue" };
 
     function initReleaseSelect(selectedIds) {
         var $input = $("#task-control-release-auditors");
@@ -365,6 +365,7 @@ $(document).ready(function () {
     function openReleaseModal($btn) {
         releaseState.taskId = parseInt($btn.data("task-id"), 10) || 0;
         releaseState.hasAuditor = String($btn.data("has-auditor")) === "1";
+        releaseState.kind = $btn.data("task-kind") || "overdue";
         var title = $btn.data("task-title") || "";
         var auditorIds = String($btn.data("auditor-ids") || "")
             .split(",")
@@ -409,19 +410,30 @@ $(document).ready(function () {
         }
     }
 
-    function updateOverdueCount(delta) {
-        var $stat = $(".task-control-stat.is-overdue .task-control-stat-value");
-        var $badge = $(".task-control-card .card-header .badge.bg-danger").first();
-        var $nudgeBadge = $("#task-control-nudge-btn .badge");
-        var next = Math.max(0, (parseInt($stat.text(), 10) || 0) + delta);
-        $stat.text(next);
+    function updateColumnCount(kind, delta) {
+        var $statValue, $badge, $nudgeBtn;
+        if (kind === "review") {
+            $statValue = $(".task-control-stat.is-review .task-control-stat-value");
+            $badge = $(".task-control-card").eq(1).find(".card-header .badge").first();
+        } else {
+            $statValue = $(".task-control-stat.is-overdue .task-control-stat-value");
+            $badge = $(".task-control-card").eq(0).find(".card-header .badge").first();
+            $nudgeBtn = $("#task-control-nudge-btn");
+        }
+
+        var next = Math.max(0, (parseInt($statValue.text(), 10) || 0) + delta);
+        $statValue.text(next);
         $badge.text(next);
-        if ($nudgeBadge.length) {
+
+        if ($nudgeBtn && $nudgeBtn.length) {
+            var $nudgeBadge = $nudgeBtn.find(".badge");
             if (next > 0) {
-                $nudgeBadge.text(next);
+                if ($nudgeBadge.length) {
+                    $nudgeBadge.text(next);
+                }
             } else {
                 $nudgeBadge.remove();
-                $("#task-control-nudge-btn").prop("disabled", true);
+                $nudgeBtn.prop("disabled", true);
             }
         }
     }
@@ -463,16 +475,25 @@ $(document).ready(function () {
                 }
 
                 closeReleaseModal();
-                var $row = $('.task-control-row[data-task-id="' + releaseState.taskId + '"][data-kind="overdue"]');
-                $row.addClass("is-leaving");
-                setTimeout(function () {
-                    $row.remove();
-                    updateOverdueCount(-1);
-                    var $list = $(".task-control-card").first().find(".task-control-list");
-                    if ($list.length && !$list.children(".task-control-row").length) {
-                        $list.closest(".card-body").html('<div class="task-control-empty"><?php echo app_lang("no_data"); ?></div>');
+
+                // Remove from both "Постановщик Я" columns if the task is listed in either
+                var kinds = ["overdue", "review"];
+                kinds.forEach(function (kind) {
+                    var $row = $('.task-control-row[data-task-id="' + releaseState.taskId + '"][data-kind="' + kind + '"]');
+                    if (!$row.length) {
+                        return;
                     }
-                }, 220);
+                    $row.addClass("is-leaving");
+                    setTimeout(function () {
+                        var $cardBody = $row.closest(".card-body");
+                        $row.remove();
+                        updateColumnCount(kind, -1);
+                        if (!$cardBody.find(".task-control-row").length) {
+                            $cardBody.html('<div class="task-control-empty"><?php echo app_lang("no_data"); ?></div>');
+                        }
+                    }, 220);
+                });
+
                 appAlert.success(result.message || <?php echo json_encode(app_lang("task_control_release_done")); ?>);
             },
             error: function () {
