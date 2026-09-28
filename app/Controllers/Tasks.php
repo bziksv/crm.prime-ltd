@@ -4788,7 +4788,20 @@ class Tasks extends Security_Controller {
         $others_sql = $select . "
                 WHERE t.deleted = 0
                   AND t.status_id = 6
-                  AND al.created_by != $user_id
+                  AND al.created_by != $user_id";
+
+        // Non-admins only see review-others tasks where they have a role;
+        // otherwise everyone saw the whole company list (e.g. Denis with no role).
+        if (empty($this->login_user->is_admin)) {
+            $others_sql .= "
+                  AND (
+                        t.assigned_to = $user_id
+                        OR FIND_IN_SET($user_id, t.executors)
+                        OR FIND_IN_SET($user_id, t.collaborators)
+                  )";
+        }
+
+        $others_sql .= "
                 ORDER BY t.id DESC";
 
         $rows = $db->query($mine_sql)->getResult();
