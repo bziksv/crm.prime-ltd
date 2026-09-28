@@ -108,7 +108,13 @@ $people_rows = array(
                 </div>
             <?php } ?>
         </div>
-        <?php if ($kind === "overdue" || $kind === "review") { ?>
+        <?php
+        $can_release = false;
+        if (($kind === "overdue" || $kind === "review") && !empty($login_user->id) && !empty($task->setter_user_id)) {
+            $can_release = ((int) $task->setter_user_id === (int) $login_user->id);
+        }
+        if ($can_release) {
+            ?>
             <div class="task-control-row-actions">
                 <button
                     type="button"

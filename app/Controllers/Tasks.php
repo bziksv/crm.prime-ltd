@@ -4917,9 +4917,18 @@ class Tasks extends Security_Controller {
         $mine_sql = $select . "
                 WHERE t.deleted = 0
                   AND al.created_by = $user_id
+                  AND t.status_id = 6
+                  AND IFNULL(t.setter_control_released, 0) = 0
+                ORDER BY t.deadline ASC, t.id DESC";
+
+        $overdue_sql = $select . "
+                WHERE t.deleted = 0
+                  AND t.status_id != 3
+                  AND t.deadline IS NOT NULL
+                  AND DATE(t.deadline) < " . $db->escape($today) . "
                   AND (
-                        (t.status_id != 3 AND IFNULL(t.setter_control_released, 0) = 0 AND t.deadline IS NOT NULL AND DATE(t.deadline) < " . $db->escape($today) . ")
-                        OR t.status_id = 6
+                        (al.created_by = $user_id AND IFNULL(t.setter_control_released, 0) = 0)
+                        OR FIND_IN_SET($user_id, IFNULL(t.auditors, ''))
                   )
                 ORDER BY t.deadline ASC, t.id DESC";
 
@@ -4943,25 +4952,19 @@ class Tasks extends Security_Controller {
         $others_sql .= "
                 ORDER BY t.id DESC";
 
-        $rows = $db->query($mine_sql)->getResult();
         $overdue = array();
-        $review = array();
         $seen_overdue = array();
-        $seen_review = array();
-
-        foreach ($rows as $row) {
-            $is_overdue = ((int) $row->status_id !== 3)
-                && empty($row->setter_control_released)
-                && $row->deadline
-                && is_date_exists($row->deadline)
-                && (substr($row->deadline, 0, 10) < $today);
-
-            if ($is_overdue && empty($seen_overdue[$row->id])) {
+        foreach ($db->query($overdue_sql)->getResult() as $row) {
+            if (empty($seen_overdue[$row->id])) {
                 $overdue[] = $row;
                 $seen_overdue[$row->id] = true;
             }
+        }
 
-            if ((int) $row->status_id === 6 && empty($row->setter_control_released) && empty($seen_review[$row->id])) {
+        $review = array();
+        $seen_review = array();
+        foreach ($db->query($mine_sql)->getResult() as $row) {
+            if (empty($seen_review[$row->id])) {
                 $review[] = $row;
                 $seen_review[$row->id] = true;
             }
