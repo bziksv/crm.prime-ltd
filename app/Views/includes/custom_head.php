@@ -3,6 +3,7 @@
 load_js(array(
     "assets/js/custom-summernote-autolink.js",
     "assets/js/notification_handler.js",
+    "assets/js/filter-multiselect-count.js",
 ));
 ?>
 <script type="text/javascript">

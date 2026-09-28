@@ -100,8 +100,31 @@
                     $("#kanban-wrapper").animate({scrollLeft: scrollLeft}, 'slow');
                 }, 500);
                 hideBatchTasksBtn();
+                if (typeof window.syncResponsibleExecutorsModeToggle === "function") {
+                    window.syncResponsibleExecutorsModeToggle("kanban-filters");
+                }
+            },
+            onInitComplete: function () {
+                if (typeof window.initResponsibleExecutorsModeToggle === "function") {
+                    window.initResponsibleExecutorsModeToggle({
+                        instanceId: "kanban-filters",
+                        wrapperSelector: "#js-kanban-filter-container, #kanban-filters",
+                        reloadType: "filters"
+                    });
+                }
             }
         });
+
+        // Fallback if appFilters has no onInitComplete support
+        setTimeout(function () {
+            if (typeof window.initResponsibleExecutorsModeToggle === "function") {
+                window.initResponsibleExecutorsModeToggle({
+                    instanceId: "kanban-filters",
+                    wrapperSelector: "#js-kanban-filter-container, #kanban-filters",
+                    reloadType: "filters"
+                });
+            }
+        }, 300);
 
         $("body").on("change", "[name='context']", function () {
 

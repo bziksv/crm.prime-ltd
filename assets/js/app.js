@@ -2285,7 +2285,7 @@ class BuildFilters {
                 settings.filterParams[select.name] = values;
                 var multiSelectDom = '<div class="filter-item-box">'
                     + '<span class="dropdown inline-block filter-multi-select">'
-                    + '<button class="' + multiSelectClass + ' btn btn-default dropdown-toggle caret " type="button" data-bs-toggle="dropdown" aria-expanded="true">' + select.text + ' </button>'
+                    + '<button class="' + multiSelectClass + ' btn btn-default dropdown-toggle caret " type="button" data-bs-toggle="dropdown" aria-expanded="true" data-filter-label="' + select.text.replace(/"/g, "&quot;") + '">' + select.text + ' </button>'
                     + multiSelect
                     + '</span>'
                     + '</div>';
@@ -2293,6 +2293,14 @@ class BuildFilters {
                 it.appendFilterDom(multiSelectDom);
 
                 var $multiSelect = $instanceWrapper.find("[data-name='" + select.name + "']");
+                var $multiSelectWrap = $multiSelect.closest(".filter-multi-select");
+                var updateMultiSelectLabel = function () {
+                    if (typeof window.updateFilterMultiSelectCount === "function") {
+                        window.updateFilterMultiSelectCount($multiSelectWrap);
+                    }
+                };
+                updateMultiSelectLabel();
+
                 $multiSelect.click(function () {
                     var $selector = $(this);
                     $selector.toggleClass("active");
@@ -2313,6 +2321,7 @@ class BuildFilters {
                         }
 
                         settings.filterParams[name] = values;
+                        updateMultiSelectLabel();
                         it.reloadInstance();
                     });
                     return false;
@@ -2334,6 +2343,7 @@ class BuildFilters {
                             }
 
                         });
+                        updateMultiSelectLabel();
                     }
                 };
 

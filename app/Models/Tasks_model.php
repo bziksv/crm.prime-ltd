@@ -292,23 +292,13 @@ class Tasks_model extends Crud_model {
             }
         }
 
-        $executors_user_ids = $this->_get_clean_value($options, "executors_user_ids");
-        if ($executors_user_ids) {
-            foreach ($executors_user_ids as $executors_user_id) {
-                $where .= " AND (FIND_IN_SET('$executors_user_id', $tasks_table.executors))";
-            }
-        }
+        $where = $this->_apply_responsible_executors_filter($where, $options, $tasks_table);
 
         $auditors_user_ids = $this->_get_clean_value($options, "auditors_user_ids");
         if ($auditors_user_ids) {
             foreach ($auditors_user_ids as $auditors_user_id) {
                 $where .= " AND (FIND_IN_SET('$auditors_user_id', IFNULL($tasks_table.auditors, '')))";
             }
-        }
-
-        $responsible_user_ids = $this->_get_clean_value($options, "responsible_user_ids");
-        if ($responsible_user_ids) {
-            $where .= " AND FIND_IN_SET($tasks_table.assigned_to,'$responsible_user_ids')";
         }
 
         $show_assigned_tasks_only_user_id = $this->_get_clean_value($options, "show_assigned_tasks_only_user_id");
@@ -748,23 +738,13 @@ class Tasks_model extends Crud_model {
             }
         }
 
-        $executors_user_ids = $this->_get_clean_value($options, "executors_user_ids");
-        if ($executors_user_ids) {
-            foreach ($executors_user_ids as $executors_user_id) {
-                $where .= " AND (FIND_IN_SET('$executors_user_id', $tasks_table.executors))";
-            }
-        }
+        $where = $this->_apply_responsible_executors_filter($where, $options, $tasks_table);
 
         $auditors_user_ids = $this->_get_clean_value($options, "auditors_user_ids");
         if ($auditors_user_ids) {
             foreach ($auditors_user_ids as $auditors_user_id) {
                 $where .= " AND (FIND_IN_SET('$auditors_user_id', IFNULL($tasks_table.auditors, '')))";
             }
-        }
-
-        $responsible_user_ids = $this->_get_clean_value($options, "responsible_user_ids");
-        if ($responsible_user_ids) {
-            $where .= " AND FIND_IN_SET($tasks_table.assigned_to,'$responsible_user_ids')";
         }
 
         $show_assigned_tasks_only_user_id = $this->_get_clean_value($options, "show_assigned_tasks_only_user_id");
@@ -1249,6 +1229,46 @@ class Tasks_model extends Crud_model {
         } else {
             return 1000; //could be any positive value
         }
+    }
+
+    /**
+     * Apply Ответственный / Исполнители filters.
+     * Mode "and" (default): both groups must match.
+     * Mode "or": either group may match (only when both groups are filled).
+     */
+    private function _apply_responsible_executors_filter($where, $options, $tasks_table) {
+        $responsible_user_ids = $this->_get_clean_value($options, "responsible_user_ids");
+        $executors_user_ids = $this->_get_clean_value($options, "executors_user_ids");
+        $mode = $this->_get_clean_value($options, "responsible_executors_mode");
+        if ($mode !== "or") {
+            $mode = "and";
+        }
+
+        $responsible_sql = "";
+        if ($responsible_user_ids) {
+            $responsible_sql = "FIND_IN_SET($tasks_table.assigned_to,'$responsible_user_ids')";
+        }
+
+        $executors_parts = array();
+        if ($executors_user_ids) {
+            foreach ($executors_user_ids as $executors_user_id) {
+                $executors_parts[] = "FIND_IN_SET('$executors_user_id', $tasks_table.executors)";
+            }
+        }
+        $executors_sql = $executors_parts ? "(" . implode(" AND ", $executors_parts) . ")" : "";
+
+        if ($mode === "or" && $responsible_sql && $executors_sql) {
+            $where .= " AND ($responsible_sql OR $executors_sql)";
+        } else {
+            if ($responsible_sql) {
+                $where .= " AND $responsible_sql";
+            }
+            if ($executors_sql) {
+                $where .= " AND $executors_sql";
+            }
+        }
+
+        return $where;
     }
 
 }

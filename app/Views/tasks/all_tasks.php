@@ -68,6 +68,7 @@ if (isset($selected_priority_id) && $selected_priority_id) {
 }
 ?>
 
+<?php echo view("tasks/responsible_executors_mode_toggle_js"); ?>
 <script type="text/javascript">
     $(document).ready(function () {
 
@@ -215,6 +216,9 @@ if (isset($selected_priority_id) && $selected_priority_id) {
             rowCallback: tasksTableRowCallback, //load this function from the task_table_common_script.php
             onRelaodCallback: function () {
                 hideBatchTasksBtn(true);
+                if (typeof window.syncResponsibleExecutorsModeToggle === "function") {
+                    window.syncResponsibleExecutorsModeToggle("task-table");
+                }
             },
             onInitComplete: function () {
                 if (!showOption) {
@@ -223,6 +227,12 @@ if (isset($selected_priority_id) && $selected_priority_id) {
                 if (typeof showHideTheBatchUpdateButton === 'function') {
                     showHideTheBatchUpdateButton();
 
+                }
+                if (typeof window.initResponsibleExecutorsModeToggle === "function") {
+                    window.initResponsibleExecutorsModeToggle({
+                        instanceId: "task-table",
+                        wrapperSelector: "#task-table_wrapper"
+                    });
                 }
             }
         });
