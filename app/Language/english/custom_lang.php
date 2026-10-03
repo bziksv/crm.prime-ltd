@@ -84,4 +84,18 @@ $lang["task_control_release_confirm"] = "Release control";
 $lang["task_control_release_done"] = "Control released: the task is no longer in your «Setter: me» columns.";
 $lang["task_control_release_auditor_required"] = "Assign at least one auditor first.";
 
+$lang["scheduled_comment"] = "Scheduled comment";
+$lang["scheduled_comment_title"] = "Send later";
+$lang["scheduled_comment_when"] = "Send at";
+$lang["scheduled_comment_confirm"] = "Schedule";
+$lang["scheduled_comment_saved"] = "The comment is scheduled and will be posted at the selected time.";
+$lang["scheduled_comment_will_send"] = "sends %s";
+$lang["scheduled_comment_cancel"] = "Cancel";
+$lang["scheduled_comment_cancelled"] = "Scheduled comment cancelled.";
+$lang["scheduled_comment_future_required"] = "Pick a date and time in the future.";
+$lang["scheduled_comment_invalid_time"] = "Invalid date and time.";
+$lang["scheduled_comment_tomorrow_08"] = "Tomorrow 08:00";
+$lang["scheduled_comment_tomorrow_09"] = "Tomorrow 09:00";
+$lang["scheduled_comment_first_workday"] = "Next workday 09:00";
+
 return $lang;

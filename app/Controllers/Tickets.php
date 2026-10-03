@@ -783,8 +783,15 @@ class Tickets extends Security_Controller {
                     $is_note = 0;
                 }
 
+                try {
+                    model("App\Models\Scheduled_comments_model")->publish_due();
+                } catch (\Throwable $e) {
+                    log_message("error", $e->getMessage());
+                }
+
                 $comments_page = $this->prepare_ticket_comments_page($ticket_id, $sort_as_decending, $is_note);
                 $view_data = array_merge($view_data, $comments_page);
+                $view_data['scheduled_comments'] = model("App\Models\Scheduled_comments_model")->get_pending_for_ticket($ticket_id, $this->login_user->id);
 
                 $view_data['custom_fields_list'] = $this->Custom_fields_model->get_combined_details("tickets", $ticket_info->id, $this->login_user->is_admin, $this->login_user->user_type)->getResult();
 
@@ -899,6 +906,13 @@ class Tickets extends Security_Controller {
         $files_data = move_files_from_temp_dir_to_permanent_dir($target_path, "ticket");
         $is_note = $this->request->getPost('is_note');
 
+        $schedule_at = trim((string) $this->request->getPost("schedule_at"));
+        $schedule_ts = (int) $this->request->getPost("schedule_ts");
+        if ($schedule_at || $schedule_ts) {
+            $this->_save_scheduled_ticket_comment($ticket_id, $description, $files_data, $is_note, $schedule_at, $schedule_ts);
+            return;
+        }
+
         $comment_data = array(
             "description" => $description,
             "ticket_id" => $ticket_id,
@@ -961,6 +975,140 @@ class Tickets extends Security_Controller {
         } else {
             echo json_encode(array("success" => false, 'message' => app_lang('error_occurred')));
         }
+    }
+
+    private function _save_scheduled_ticket_comment($ticket_id, $description, $files_data, $is_note, $schedule_at, $schedule_ts = 0) {
+        $ticket_id = (int) $ticket_id;
+        if (!$ticket_id) {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+            return;
+        }
+
+        $utc = "";
+        $schedule_ts = (int) $schedule_ts;
+        if ($schedule_ts > 0) {
+            $utc = gmdate("Y-m-d H:i:s", $schedule_ts);
+        } else {
+            $schedule_at = str_replace("T", " ", trim($schedule_at));
+            if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $schedule_at)) {
+                $schedule_at .= ":00";
+            }
+            if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $schedule_at)) {
+                echo json_encode(array("success" => false, "message" => app_lang("scheduled_comment_invalid_time")));
+                return;
+            }
+            $utc = convert_date_local_to_utc($schedule_at);
+        }
+
+        if (!$utc || strtotime($utc . " UTC") <= time()) {
+            echo json_encode(array("success" => false, "message" => app_lang("scheduled_comment_future_required")));
+            return;
+        }
+
+        $model = model("App\Models\Scheduled_comments_model");
+        $save_data = array(
+            "created_by" => $this->login_user->id,
+            "task_id" => 0,
+            "ticket_id" => $ticket_id,
+            "project_id" => 0,
+            "description" => $description,
+            "files" => $files_data,
+            "is_note" => $is_note ? 1 : 0,
+            "scheduled_at" => $utc,
+            "status" => "pending",
+            "created_at" => get_current_utc_time(),
+        );
+        $row_id = $model->ci_save($save_data);
+
+        if (!$row_id) {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+            return;
+        }
+
+        $rows = $model->get_pending_for_ticket($ticket_id, $this->login_user->id);
+        $item = null;
+        foreach ($rows as $row) {
+            if ((int) $row->id === (int) $row_id) {
+                $item = $row;
+                break;
+            }
+        }
+
+        $html = $item ? $this->template->view("tasks/scheduled_comment_item", array("item" => $item)) : "";
+        echo json_encode(array(
+            "success" => true,
+            "scheduled" => true,
+            "data" => $html,
+            "message" => app_lang("scheduled_comment_saved"),
+        ));
+    }
+
+    function cancel_scheduled_comment() {
+        $id = (int) $this->request->getPost("id");
+        if (!$id) {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+            return;
+        }
+
+        $model = model("App\Models\Scheduled_comments_model");
+        $row = $model->get_one($id);
+        if (!$row || !$row->id || empty($row->ticket_id)) {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+            return;
+        }
+
+        $this->validate_ticket_access($row->ticket_id);
+        $ok = $model->cancel($id, $this->login_user->id);
+        if ($ok) {
+            echo json_encode(array("success" => true, "message" => app_lang("scheduled_comment_cancelled")));
+        } else {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+        }
+    }
+
+    function flush_scheduled_comments() {
+        $ticket_id = (int) $this->request->getPost("ticket_id");
+        if ($ticket_id) {
+            $this->validate_ticket_access($ticket_id);
+        }
+
+        $model = model("App\Models\Scheduled_comments_model");
+        $published_ids = array();
+        $html = "";
+
+        try {
+            $due = $model->get_due_pending(get_current_utc_time());
+            foreach ($due as $row) {
+                $comment_id = $model->publish_one($row);
+                if (!$comment_id) {
+                    continue;
+                }
+                if (!$ticket_id || (int) $row->ticket_id !== $ticket_id) {
+                    continue;
+                }
+                $published_ids[] = (int) $row->id;
+                $view_data = array();
+                $view_data["ticket_info"] = $this->Tickets_model->get_details(array("id" => $ticket_id))->getRow();
+                $view_data["comment"] = $this->Ticket_comments_model->get_details(array(
+                    "id" => $comment_id,
+                    "login_user_id" => $this->login_user->id,
+                ))->getRow();
+                if ($view_data["comment"]) {
+                    $recipients_map = $this->get_comment_recipients_map(array($view_data["comment"]));
+                    $view_data["comment_recipients"] = get_array_value($recipients_map, $view_data["comment"]->id) ?: array();
+                    $html .= $this->template->view("tickets/comment_row", $view_data);
+                }
+            }
+        } catch (\Throwable $e) {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+            return;
+        }
+
+        echo json_encode(array(
+            "success" => true,
+            "published_ids" => $published_ids,
+            "data" => $html,
+        ));
     }
 
     function save_ticket_status($ticket_id = 0, $status = "closed") {

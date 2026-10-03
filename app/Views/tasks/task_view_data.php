@@ -471,6 +471,10 @@ if ($total_sub_tasks) {
                                 <?php echo view("projects/comments/comment_form"); ?>
                             <?php } ?>
 
+                            <div id="scheduled-comments-container" class="scheduled-comments-container">
+                                <?php echo view("tasks/scheduled_comments_list", array("scheduled_comments" => isset($scheduled_comments) ? $scheduled_comments : array())); ?>
+                            </div>
+
                             <div id="comment-pin-container" class="mb-4"></div>
 
                             <div class="task-timeline-header">
@@ -555,4 +559,105 @@ if ($total_sub_tasks) {
         $btn.tooltip({container: "body"});
     }
 })();
+
+(function () {
+    var flushUrl = "<?php echo get_uri('tasks/flush_scheduled_comments'); ?>";
+    var taskId = <?php echo (int) $task_id; ?>;
+    var timers = [];
+    var flushing = false;
+
+    function clearTimers() {
+        timers.forEach(function (id) { clearTimeout(id); });
+        timers = [];
+    }
+
+    function applyPublished(result) {
+        if (!result || !result.success || !result.published_ids || !result.published_ids.length) {
+            return;
+        }
+        result.published_ids.forEach(function (id) {
+            $("#scheduled-comment-" + id).remove();
+        });
+        if (result.data) {
+            $("#task-timeline-feed").prepend(result.data);
+            if (typeof feather !== "undefined") {
+                feather.replace();
+            }
+        }
+    }
+
+    function flushDue() {
+        if (flushing || !$("#scheduled-comments-container .scheduled-comment-item").length) {
+            return;
+        }
+        flushing = true;
+        $.ajax({
+            url: flushUrl,
+            type: "POST",
+            dataType: "json",
+            data: {task_id: taskId},
+            complete: function () {
+                flushing = false;
+            },
+            success: applyPublished
+        });
+    }
+
+    window.primeArmScheduledComments = function () {
+        clearTimers();
+        $("#scheduled-comments-container .scheduled-comment-item").each(function () {
+            var ts = parseInt($(this).attr("data-due-ts"), 10);
+            if (!ts) {
+                return;
+            }
+            var delay = Math.max(0, ts * 1000 - Date.now()) + 400;
+            timers.push(setTimeout(flushDue, delay));
+        });
+    };
+
+    window.primeArmScheduledComments();
+    setInterval(function () {
+        var now = Math.floor(Date.now() / 1000);
+        var due = false;
+        $("#scheduled-comments-container .scheduled-comment-item").each(function () {
+            var ts = parseInt($(this).attr("data-due-ts"), 10);
+            if (ts && ts <= now) {
+                due = true;
+            }
+        });
+        if (due) {
+            flushDue();
+        }
+    }, 20000);
+})();
+
+$(document).off("click.scheduledCommentCancel").on("click.scheduledCommentCancel", ".scheduled-comment-cancel", function () {
+    var $item = $(this).closest(".scheduled-comment-item");
+    var id = $(this).attr("data-id");
+    if (!id) {
+        return;
+    }
+    appLoader.show();
+    $.ajax({
+        url: "<?php echo get_uri('tasks/cancel_scheduled_comment'); ?>",
+        type: "POST",
+        dataType: "json",
+        data: {id: id},
+        success: function (result) {
+            appLoader.hide();
+            if (result && result.success) {
+                $item.fadeOut(200, function () {
+                    $(this).remove();
+                });
+                appAlert.success(result.message);
+            } else {
+                appAlert.error((result && result.message) ? result.message : "<?php echo app_lang('error_occurred'); ?>");
+            }
+        },
+        error: function () {
+            appLoader.hide();
+            appAlert.error("<?php echo app_lang('error_occurred'); ?>");
+        }
+    });
+});
 </script>

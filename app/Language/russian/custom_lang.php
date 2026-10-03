@@ -96,4 +96,18 @@ $lang["task_control_release_confirm"] = "Отказаться от контро�
 $lang["task_control_release_done"] = "Контроль снят: задача больше не в ваших колонках «Постановщик Я».";
 $lang["task_control_release_auditor_required"] = "Сначала назначьте хотя бы одного аудитора.";
 
+$lang["scheduled_comment"] = "Отложенный комментарий";
+$lang["scheduled_comment_title"] = "Отправить позже";
+$lang["scheduled_comment_when"] = "Когда отправить";
+$lang["scheduled_comment_confirm"] = "Запланировать";
+$lang["scheduled_comment_saved"] = "Комментарий запланирован и уйдёт в выбранное время.";
+$lang["scheduled_comment_will_send"] = "отправится %s";
+$lang["scheduled_comment_cancel"] = "Отменить";
+$lang["scheduled_comment_cancelled"] = "Отложенная отправка отменена.";
+$lang["scheduled_comment_future_required"] = "Выберите дату и время в будущем.";
+$lang["scheduled_comment_invalid_time"] = "Некорректные дата и время.";
+$lang["scheduled_comment_tomorrow_08"] = "Завтра 08:00";
+$lang["scheduled_comment_tomorrow_09"] = "Завтра 09:00";
+$lang["scheduled_comment_first_workday"] = "Первый раб. день 09:00";
+
 return $lang;

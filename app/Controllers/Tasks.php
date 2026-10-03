@@ -1785,6 +1785,12 @@ class Tasks extends Security_Controller {
         $comment_page_size = 50;
         $options["limit"] = $comment_page_size + 1;
         $options["offset"] = 0;
+        try {
+            model("App\Models\Scheduled_comments_model")->publish_due();
+        } catch (\Throwable $e) {
+            log_message("error", $e->getMessage());
+        }
+
         $comments = $this->Project_comments_model->get_details($options)->getResult();
         $comments_has_more = count($comments) > $comment_page_size;
         if ($comments_has_more) {
@@ -1795,6 +1801,7 @@ class Tasks extends Security_Controller {
         $view_data['comments_next_offset'] = count($comments);
         $view_data['comments_page_size'] = $comment_page_size;
         $view_data['task_id'] = $task_id;
+        $view_data['scheduled_comments'] = model("App\Models\Scheduled_comments_model")->get_pending_for_task($task_id, $this->login_user->id);
         $view_data['timeline_items'] = $this->_build_task_timeline_items($task_id, $comments);
 
         $view_data['personal_note'] = $this->Task_personal_notes_models->get_one_where(["created_by" => $this->login_user->id, "task_id" => $task_id]);
@@ -4270,6 +4277,13 @@ class Tasks extends Security_Controller {
         $task_id = $this->request->getPost('task_id');
         $description = $this->request->getPost('description');
 
+        $schedule_at = trim((string) $this->request->getPost("schedule_at"));
+        $schedule_ts = (int) $this->request->getPost("schedule_ts");
+        if ($schedule_at || $schedule_ts) {
+            $this->_save_scheduled_comment($task_id, $project_id, $description, $files_data, $schedule_at, $schedule_ts);
+            return;
+        }
+
         $data = array(
             "created_by" => $this->login_user->id,
             "created_at" => get_current_utc_time(),
@@ -4315,6 +4329,124 @@ class Tasks extends Security_Controller {
         } else {
             echo json_encode(array("success" => false, 'message' => app_lang('error_occurred')));
         }
+    }
+
+    private function _save_scheduled_comment($task_id, $project_id, $description, $files_data, $schedule_at, $schedule_ts = 0) {
+        $task_id = (int) $task_id;
+        $task_info = $this->Tasks_model->get_one($task_id);
+        if (!$task_id || !$task_info || !$task_info->id || !$this->can_view_tasks("", 0, $task_info)) {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+            return;
+        }
+
+        $utc = "";
+        $schedule_ts = (int) $schedule_ts;
+        if ($schedule_ts > 0) {
+            $utc = gmdate("Y-m-d H:i:s", $schedule_ts);
+        } else {
+            $schedule_at = str_replace("T", " ", trim($schedule_at));
+            if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $schedule_at)) {
+                $schedule_at .= ":00";
+            }
+            if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $schedule_at)) {
+                echo json_encode(array("success" => false, "message" => app_lang("scheduled_comment_invalid_time")));
+                return;
+            }
+            $utc = convert_date_local_to_utc($schedule_at);
+        }
+
+        if (!$utc || strtotime($utc . " UTC") <= time()) {
+            echo json_encode(array("success" => false, "message" => app_lang("scheduled_comment_future_required")));
+            return;
+        }
+
+        $model = model("App\Models\Scheduled_comments_model");
+        $save_data = array(
+            "created_by" => $this->login_user->id,
+            "task_id" => $task_id,
+            "project_id" => $project_id ? (int) $project_id : (int) $task_info->project_id,
+            "description" => $description,
+            "files" => $files_data,
+            "scheduled_at" => $utc,
+            "status" => "pending",
+            "created_at" => get_current_utc_time(),
+        );
+        $row_id = $model->ci_save($save_data);
+
+        if (!$row_id) {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+            return;
+        }
+
+        $rows = $model->get_pending_for_task($task_id, $this->login_user->id);
+        $item = null;
+        foreach ($rows as $row) {
+            if ((int) $row->id === (int) $row_id) {
+                $item = $row;
+                break;
+            }
+        }
+
+        $html = $item ? $this->template->view("tasks/scheduled_comment_item", array("item" => $item)) : "";
+        echo json_encode(array(
+            "success" => true,
+            "scheduled" => true,
+            "data" => $html,
+            "message" => app_lang("scheduled_comment_saved"),
+        ));
+    }
+
+    function cancel_scheduled_comment() {
+        $id = (int) $this->request->getPost("id");
+        if (!$id) {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+            return;
+        }
+
+        $ok = model("App\Models\Scheduled_comments_model")->cancel($id, $this->login_user->id);
+        if ($ok) {
+            echo json_encode(array("success" => true, "message" => app_lang("scheduled_comment_cancelled")));
+        } else {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+        }
+    }
+
+    function flush_scheduled_comments() {
+        $task_id = (int) $this->request->getPost("task_id");
+        $model = model("App\Models\Scheduled_comments_model");
+        $published_ids = array();
+        $html = "";
+
+        try {
+            $due = $model->get_due_pending(get_current_utc_time());
+            foreach ($due as $row) {
+                $comment_id = $model->publish_one($row);
+                if (!$comment_id) {
+                    continue;
+                }
+                if ($task_id && (int) $row->task_id !== $task_id) {
+                    continue;
+                }
+                $published_ids[] = (int) $row->id;
+                $comments = $this->Project_comments_model->get_details(array(
+                    "id" => $comment_id,
+                    "login_user_id" => $this->login_user->id,
+                ))->getResult();
+                $html .= $this->template->view("projects/comments/comment_list", array(
+                    "comments" => $comments,
+                    "omit_comment_list_scripts" => true,
+                ));
+            }
+        } catch (\Throwable $e) {
+            echo json_encode(array("success" => false, "message" => app_lang("error_occurred")));
+            return;
+        }
+
+        echo json_encode(array(
+            "success" => true,
+            "published_ids" => $published_ids,
+            "data" => $html,
+        ));
     }
 
     /* download task files by zip */
