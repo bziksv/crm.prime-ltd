@@ -3947,6 +3947,7 @@ class Tasks extends Security_Controller {
                     "end" => $end_date,
                     "draggable" => false, //disable group dragging
                     "custom_class" => "no-drag",
+                    "bg_color" => "#475569", // readable group header on white grid
                     "progress" => 0, //we've to add this to prevent error
                     "arrow_class" => "parent-group-arrow $task_type_class"
                 );

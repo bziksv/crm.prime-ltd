@@ -461,6 +461,25 @@ var Gantt = (function () {
         element.setAttribute(attr, value);
     };
 
+    function ganttLabelColorForFill(hex) {
+        if (!hex) {
+            return '#0f172a';
+        }
+        let value = String(hex).replace('#', '').trim();
+        if (value.length === 3) {
+            value = value.split('').map(ch => ch + ch).join('');
+        }
+        if (value.length !== 6 || /[^0-9a-f]/i.test(value)) {
+            return '#0f172a';
+        }
+        const r = parseInt(value.slice(0, 2), 16);
+        const g = parseInt(value.slice(2, 4), 16);
+        const b = parseInt(value.slice(4, 6), 16);
+        // perceived brightness — light bars get dark text
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness > 155 ? '#0f172a' : '#ffffff';
+    }
+
     class Bar {
         constructor(gantt, task) {
             this.set_defaults(gantt, task);
@@ -550,6 +569,9 @@ var Gantt = (function () {
             //apply custom background color
             if (this.task.bg_color) {
                 bar_data_object.style = "fill: " + this.task.bg_color;
+            } else if (this.task.custom_class && this.task.custom_class.indexOf('no-drag') !== -1) {
+                // group / parent rows: dark slate so white labels stay readable
+                bar_data_object.style = "fill: #475569";
             }
 
             this.$bar = createSVG('rect', bar_data_object);
@@ -884,12 +906,21 @@ var Gantt = (function () {
             const bar = this.$bar,
                     label = this.group.querySelector('.bar-label');
 
+            if (!label || !bar) {
+                return;
+            }
+
             if (label.getBBox().width > bar.getWidth()) {
                 label.classList.add('big');
                 label.setAttribute('x', bar.getX() + bar.getWidth() + 5);
+                // outside the bar — always dark on white grid
+                label.style.fill = '#0f172a';
             } else {
                 label.classList.remove('big');
                 label.setAttribute('x', bar.getX() + bar.getWidth() / 2);
+                const fill = this.task.bg_color
+                        || (this.task.custom_class && this.task.custom_class.indexOf('no-drag') !== -1 ? '#475569' : '#64748b');
+                label.style.fill = ganttLabelColorForFill(fill);
             }
         }
 

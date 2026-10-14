@@ -3803,3 +3803,41 @@ a.pm-file-row-main:hover .pm-file-name {
 .gantt .sticky text.lower-text {
     fill: #333;
 }
+
+
+/* Gantt readability */
+.gantt .bar {
+    fill: #64748b;
+}
+.gantt .bar-wrapper.no-drag .bar {
+    fill: #475569 !important;
+}
+.gantt .bar-wrapper.no-drag:hover .bar,
+.gantt .bar-wrapper.no-drag.active .bar {
+    fill: #334155 !important;
+}
+.gantt .bar-label {
+    fill: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+}
+.gantt .bar-label.big {
+    fill: #0f172a !important;
+    font-weight: 600;
+}
+.gantt .upper-text {
+    fill: #334155;
+    font-weight: 600;
+}
+.gantt .lower-text {
+    fill: #0f172a;
+    font-weight: 600;
+}
+.gantt .sticky text.upper-text {
+    fill: #334155;
+    font-weight: 600;
+}
+.gantt .sticky text.lower-text {
+    fill: #0f172a;
+    font-weight: 600;
+}
