@@ -194,6 +194,19 @@ files.baseURL = 'https://'
 
 Вложенный `.git` внутри `` удалён — репозиторий только в корне проекта.
 
+## Синхронизация таймера с Datagon
+
+После `Attendance_model::log_time` CRM шлёт короткий HTTP POST на Datagon (`POST /api/work-schedule/clock/sync-from-crm`), чтобы зеркалить «Начать работу» / «Закончить» в табель Datagon. UI CRM не блокируется (timeout ~3 с).
+
+В `.env` CRM (не в git):
+
+```
+DATAGON_CLOCK_SYNC_URL = 'https://p.datagon.ru/api/work-schedule/clock/sync-from-crm'
+DATAGON_CLOCK_SYNC_SECRET = '<тот же секрет, что DATAGON_CLOCK_SYNC_SECRET на Datagon>'
+```
+
+Без этих переменных хук молча no-op. Обратный поток (Datagon → CRM) пишет в `rise_attendance` напрямую из Datagon (БД CRM).
+
 ## Что не коммитим
 
 - `app/Config/Database.php`, `.env` — секреты

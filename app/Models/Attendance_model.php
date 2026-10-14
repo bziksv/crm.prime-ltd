@@ -37,14 +37,76 @@ class Attendance_model extends Crud_model {
                 "status" => "pending",
                 "note" => $note
             );
-            return $this->ci_save($data, $current_clock_record->id);
+            $saved = $this->ci_save($data, $current_clock_record->id);
+            $this->notify_datagon_clock_sync($user_id, 'stop', null, $now);
+            return $saved;
         } else {
             $data = array(
                 "in_time" => $now,
                 "status" => "incomplete",
                 "user_id" => $user_id
             );
-            return $this->ci_save($data);
+            $saved = $this->ci_save($data);
+            $this->notify_datagon_clock_sync($user_id, 'start', $now, null);
+            return $saved;
+        }
+    }
+
+    /**
+     * Зеркало таймера смены в Datagon (не блокирует UI CRM).
+     * Env: DATAGON_CLOCK_SYNC_URL, DATAGON_CLOCK_SYNC_SECRET
+     */
+    private function notify_datagon_clock_sync($user_id, $action, $in_time = null, $out_time = null) {
+        $url = trim((string) (function_exists('env') ? env('DATAGON_CLOCK_SYNC_URL') : '') ?: (getenv('DATAGON_CLOCK_SYNC_URL') ?: ''));
+        $secret = trim((string) (function_exists('env') ? env('DATAGON_CLOCK_SYNC_SECRET') : '') ?: (getenv('DATAGON_CLOCK_SYNC_SECRET') ?: ''));
+        if ($url === '' || $secret === '') {
+            return;
+        }
+        $payload = array(
+            'crm_user_id' => (int) $user_id,
+            'action' => $action,
+        );
+        if ($in_time) {
+            $payload['in_time'] = $in_time;
+        }
+        if ($out_time) {
+            $payload['out_time'] = $out_time;
+        }
+        $json = json_encode($payload);
+        if ($json === false) {
+            return;
+        }
+        try {
+            if (function_exists('curl_init')) {
+                $ch = curl_init($url);
+                curl_setopt_array($ch, array(
+                    CURLOPT_POST => true,
+                    CURLOPT_HTTPHEADER => array(
+                        'Content-Type: application/json',
+                        'X-Datagon-Clock-Sync: ' . $secret,
+                    ),
+                    CURLOPT_POSTFIELDS => $json,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_CONNECTTIMEOUT => 2,
+                    CURLOPT_TIMEOUT => 3,
+                    CURLOPT_NOSIGNAL => 1,
+                ));
+                curl_exec($ch);
+                curl_close($ch);
+                return;
+            }
+            $ctx = stream_context_create(array(
+                'http' => array(
+                    'method' => 'POST',
+                    'header' => "Content-Type: application/json\r\nX-Datagon-Clock-Sync: {$secret}\r\n",
+                    'content' => $json,
+                    'timeout' => 3,
+                    'ignore_errors' => true,
+                ),
+            ));
+            @file_get_contents($url, false, $ctx);
+        } catch (\Throwable $e) {
+            // зеркало не должно ломать clock CRM
         }
     }
 
