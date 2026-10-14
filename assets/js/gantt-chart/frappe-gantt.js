@@ -1834,19 +1834,36 @@ var Gantt = (function () {
             if (!parent_element)
                 return;
 
-            const hours_before_first_task = date_utils.diff(
-                    this.get_oldest_starting_date(),
-                    this.gantt_start,
-                    'hour'
-                    );
+            // Scroll to today (ближайшие задачи), not to the oldest task —
+            // otherwise Month/Year views open on a huge empty left side.
+            let target = date_utils.today();
+            if (target < this.gantt_start) {
+                target = this.get_oldest_starting_date();
+            } else if (target > this.gantt_end) {
+                target = this.get_newest_starting_date();
+            }
 
-            const scroll_pos =
-                    hours_before_first_task /
-                    this.options.step *
-                    this.options.column_width -
-                    this.options.column_width;
+            let scroll_pos = 0;
+            if (this.view_is(VIEW_MODE.MONTH)) {
+                // Same day-based math as bar X positions (months aren't equal hours).
+                const days_before_target = date_utils.diff(target, this.gantt_start, 'day');
+                scroll_pos =
+                        days_before_target * this.options.column_width / 30 -
+                        this.options.column_width;
+            } else {
+                const hours_before_target = date_utils.diff(
+                        target,
+                        this.gantt_start,
+                        'hour'
+                        );
+                scroll_pos =
+                        hours_before_target /
+                        this.options.step *
+                        this.options.column_width -
+                        this.options.column_width;
+            }
 
-            parent_element.scrollLeft = scroll_pos;
+            parent_element.scrollLeft = Math.max(0, scroll_pos);
         }
 
         bind_grid_click() {
@@ -2157,6 +2174,15 @@ var Gantt = (function () {
                     .reduce(
                             (prev_date, cur_date) =>
                         cur_date <= prev_date ? cur_date : prev_date
+                    );
+        }
+
+        get_newest_starting_date() {
+            return this.tasks
+                    .map(task => task._start)
+                    .reduce(
+                            (prev_date, cur_date) =>
+                        cur_date >= prev_date ? cur_date : prev_date
                     );
         }
 
