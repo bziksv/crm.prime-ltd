@@ -1399,11 +1399,13 @@ var Gantt = (function () {
             this.map_arrows_on_bars();
             this.set_width();
             this.set_scroll_position();
+            this.setup_sticky_header();
+            this.bind_shift_wheel_scroll();
         }
 
         setup_layers() {
             this.layers = {};
-            const layers = ['grid', 'date', 'arrow', 'progress', 'bar', 'details'];
+            const layers = ['grid', 'date', 'arrow', 'progress', 'bar', 'details', 'sticky'];
             // make group layers
             for (let layer of layers) {
                 this.layers[layer] = createSVG('g', {
@@ -1411,6 +1413,77 @@ var Gantt = (function () {
                     append_to: this.$svg
                 });
             }
+        }
+
+        setup_sticky_header() {
+            if (!this.$container || !this.layers.sticky) {
+                return;
+            }
+
+            const header_height = this.options.header_height + 10;
+            const header_width = this.dates.length * this.options.column_width;
+
+            // clear previous sticky content
+            while (this.layers.sticky.firstChild) {
+                this.layers.sticky.removeChild(this.layers.sticky.firstChild);
+            }
+
+            // opaque background so rows don't show through the sticky dates
+            createSVG('rect', {
+                x: 0,
+                y: 0,
+                width: header_width,
+                height: header_height,
+                class: 'grid-header sticky-grid-header',
+                append_to: this.layers.sticky
+            });
+
+            // clone date labels into sticky layer (on top of bars)
+            const dateNodes = this.layers.date.querySelectorAll('text');
+            dateNodes.forEach(node => {
+                const clone = node.cloneNode(true);
+                this.layers.sticky.appendChild(clone);
+            });
+
+            // hide originals to avoid double-drawing at scrollTop=0
+            this.layers.date.style.display = 'none';
+            const originalHeader = this.layers.grid.querySelector('.grid-header');
+            if (originalHeader) {
+                originalHeader.style.display = 'none';
+            }
+
+            const applySticky = () => {
+                const y = this.$container.scrollTop || 0;
+                this.layers.sticky.setAttribute('transform', `translate(0, ${y})`);
+            };
+
+            if (this._stickyScrollHandler) {
+                this.$container.removeEventListener('scroll', this._stickyScrollHandler);
+            }
+            this._stickyScrollHandler = applySticky;
+            this.$container.addEventListener('scroll', this._stickyScrollHandler, {passive: true});
+            applySticky();
+        }
+
+        bind_shift_wheel_scroll() {
+            if (!this.$container) {
+                return;
+            }
+            if (this._shiftWheelHandler) {
+                this.$container.removeEventListener('wheel', this._shiftWheelHandler);
+            }
+            this._shiftWheelHandler = (e) => {
+                // Keep Shift+wheel as horizontal pan; don't hijack normal vertical scroll.
+                if (!e.shiftKey) {
+                    return;
+                }
+                // Some browsers already convert Shift+wheel to horizontal; still normalize.
+                if (Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
+                    e.preventDefault();
+                    this.$container.scrollLeft += e.deltaY;
+                }
+            };
+            this.$container.addEventListener('wheel', this._shiftWheelHandler, {passive: false});
         }
 
         make_grid() {

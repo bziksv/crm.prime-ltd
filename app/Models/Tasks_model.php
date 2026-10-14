@@ -628,6 +628,11 @@ class Tasks_model extends Crud_model {
         return $context_where;
     }
 
+    public function get_quick_filter_where($filter) {
+        $tasks_table = $this->db->prefixTable('tasks');
+        return $this->make_quick_filter_query($filter, $tasks_table);
+    }
+
     private function make_quick_filter_query($filter, $tasks_table) {
         $project_comments_table = $this->db->prefixTable("project_comments");
         $query = "";

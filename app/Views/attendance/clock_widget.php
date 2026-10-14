@@ -19,3 +19,8 @@
         </div>
     </div>
 </div>
+<script>
+if (typeof window.refreshAttendanceTopbar === "function") {
+    window.refreshAttendanceTopbar();
+}
+</script>

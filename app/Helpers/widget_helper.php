@@ -20,6 +20,24 @@ if (!function_exists('clock_widget')) {
 }
 
 /**
+ * Compact attendance clock in/out control for the top navbar.
+ * @return html
+ */
+if (!function_exists('attendance_topbar_icon')) {
+
+    function attendance_topbar_icon() {
+        $ci = new Security_Controller(false);
+        if (get_setting("module_attendance") != "1" || $ci->login_user->user_type !== "staff") {
+            return "";
+        }
+        $view_data["clock_status"] = $ci->Attendance_model->current_clock_in_record($ci->login_user->id);
+        $template = new Template();
+        return $template->view("attendance/topbar_icon", $view_data);
+    }
+
+}
+
+/**
  * activity logs widget for projects
  * @param array $params
  * @return html

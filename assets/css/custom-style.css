@@ -3682,3 +3682,124 @@ a.pm-file-row-main:hover .pm-file-name {
     color: #344054;
     font-size: 13px;
 }
+
+/* Attendance shift control in topbar */
+#js-attendance-topbar-item {
+    display: flex;
+    align-items: center;
+    margin-left: 2px;
+}
+
+.attendance-topbar-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    margin: 0 6px;
+    padding: 0 4px 0 12px;
+    border-radius: 999px;
+    background: #f8fafc;
+    white-space: nowrap;
+}
+
+.attendance-topbar-control.is-running {
+    background: #ecfdf3;
+}
+
+.attendance-topbar-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #cbd5e1;
+    flex-shrink: 0;
+}
+
+.attendance-topbar-control.is-running .attendance-topbar-dot {
+    background: #12b76a;
+    box-shadow: 0 0 0 3px rgba(18, 183, 106, 0.16);
+}
+
+.attendance-topbar-time {
+    min-width: 58px;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: #64748b;
+    line-height: 1;
+}
+
+.attendance-topbar-control.is-running .attendance-topbar-time {
+    color: #027a48;
+}
+
+.attendance-topbar-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0 !important;
+    margin: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    line-height: 0 !important;
+    text-decoration: none !important;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.attendance-topbar-btn .attendance-topbar-glyph {
+    display: block;
+    width: 12px;
+    height: 12px;
+    margin: 0;
+    flex-shrink: 0;
+    fill: currentColor;
+    stroke: none;
+}
+
+/* play triangle looks high/left optically — nudge to visual center */
+.attendance-topbar-start .attendance-topbar-glyph {
+    transform: translate(1px, 1px);
+}
+
+.attendance-topbar-start {
+    color: #fff !important;
+    background: #12b76a;
+}
+
+.attendance-topbar-start:hover {
+    background: #039855;
+    color: #fff !important;
+    transform: scale(1.05);
+}
+
+.attendance-topbar-stop {
+    color: #fff !important;
+    background: #f04438;
+}
+
+.attendance-topbar-stop:hover {
+    background: #d92d20;
+    color: #fff !important;
+    transform: scale(1.05);
+}
+
+.attendance-topbar-btn.spinning,
+.attendance-topbar-btn:disabled {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.gantt .sticky-grid-header {
+    fill: #ffffff;
+}
+
+.gantt .sticky text.upper-text {
+    fill: #555;
+}
+
+.gantt .sticky text.lower-text {
+    fill: #333;
+}

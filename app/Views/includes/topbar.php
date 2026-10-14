@@ -12,6 +12,8 @@
                     </a>
                 </li>
 
+                <?php echo attendance_topbar_icon(); ?>
+
                 <?php
                 //get the array of hidden topbar menus
                 $hidden_topbar_menus = explode(",", get_setting("user_" . $user . "_hidden_topbar_menus"));
@@ -293,6 +295,123 @@
         });
 
         $('[data-bs-toggle="tooltip"]').tooltip();
+
+        var attendanceTopbarTicker = null;
+
+        function pad2(n) {
+            return n < 10 ? "0" + n : String(n);
+        }
+
+        function formatAttendanceElapsed(seconds) {
+            seconds = Math.max(0, parseInt(seconds, 10) || 0);
+            var h = Math.floor(seconds / 3600);
+            var m = Math.floor((seconds % 3600) / 60);
+            var s = seconds % 60;
+            return pad2(h) + ":" + pad2(m) + ":" + pad2(s);
+        }
+
+        window.stopAttendanceTopbarTicker = function () {
+            if (attendanceTopbarTicker) {
+                clearInterval(attendanceTopbarTicker);
+                attendanceTopbarTicker = null;
+            }
+        };
+
+        window.startAttendanceTopbarTicker = function () {
+            window.stopAttendanceTopbarTicker();
+            var $control = $("#js-attendance-topbar-control");
+            var $time = $("#js-attendance-topbar-time");
+            if (!$control.length || !$time.length || !$control.hasClass("is-running")) {
+                return;
+            }
+            var startedTs = parseInt($control.attr("data-started-ts"), 10) || 0;
+            if (!startedTs) {
+                return;
+            }
+            var tick = function () {
+                var elapsed = Math.floor(Date.now() / 1000) - startedTs;
+                $time.text(formatAttendanceElapsed(elapsed));
+            };
+            tick();
+            attendanceTopbarTicker = setInterval(tick, 1000);
+        };
+
+        window.applyAttendanceTopbarIcon = function (html) {
+            if (!html) {
+                return;
+            }
+            window.stopAttendanceTopbarTicker();
+            var $current = $("#js-attendance-topbar-item");
+            if ($current.length) {
+                $current.replaceWith(html);
+            } else {
+                $(".sidebar-toggle-btn").closest("li").after(html);
+            }
+            if (typeof feather !== "undefined") {
+                feather.replace();
+            }
+            var $btn = $("#js-attendance-topbar-btn");
+            if ($btn.length && typeof $btn.tooltip === "function") {
+                $btn.tooltip({container: "body"});
+            }
+            window.startAttendanceTopbarTicker();
+        };
+
+        window.refreshAttendanceTopbar = function () {
+            if (!$("#js-attendance-topbar-item").length && !$(".sidebar-toggle-btn").length) {
+                return;
+            }
+            $.ajax({
+                url: "<?php echo get_uri('attendance/topbar_clock_icon'); ?>",
+                type: "POST",
+                success: function (html) {
+                    window.applyAttendanceTopbarIcon(html);
+                }
+            });
+        };
+
+        window.startAttendanceTopbarTicker();
+
+        $("body").off("click.attendanceTopbarClockIn").on("click.attendanceTopbarClockIn", "[data-act='attendance-topbar-clock-in']", function (e) {
+            e.preventDefault();
+            var $btn = $(this);
+            if ($btn.hasClass("spinning") || $btn.prop("disabled")) {
+                return;
+            }
+            $btn.addClass("spinning").prop("disabled", true);
+            $.ajax({
+                url: "<?php echo get_uri('attendance/log_time'); ?>",
+                type: "POST",
+                dataType: "json",
+                data: {from_topbar: 1},
+                success: function (result) {
+                    $btn.removeClass("spinning").prop("disabled", false);
+                    if (!result || !result.success) {
+                        appAlert.error((result && result.message) ? result.message : "<?php echo app_lang('error_occurred'); ?>");
+                        return;
+                    }
+                    if (result.topbar_icon) {
+                        window.applyAttendanceTopbarIcon(result.topbar_icon);
+                    } else {
+                        window.refreshAttendanceTopbar();
+                    }
+                    if (result.clock_widget && $("#js-clock-in-out").length) {
+                        $("#js-clock-in-out").replaceWith(result.clock_widget);
+                        if (typeof feather !== "undefined") {
+                            feather.replace();
+                        }
+                    }
+                    if (result.message) {
+                        appAlert.success(result.message, {duration: 5000});
+                    }
+                },
+                error: function () {
+                    $btn.removeClass("spinning").prop("disabled", false);
+                    appAlert.error("<?php echo app_lang('error_occurred'); ?>");
+                    window.refreshAttendanceTopbar();
+                }
+            });
+        });
     });
 
 </script>

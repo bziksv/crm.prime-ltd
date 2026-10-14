@@ -39,13 +39,23 @@ echo form_open(get_uri($url), array("id" => "attendance-note-form", "class" => "
         $("#attendance-note-form").appForm({
             onSuccess: function (result) {
                 if (result.clock_widget) {
-                    $("#timecard-clock-out").closest("#js-clock-in-out").html(result.clock_widget);
+                    if ($("#js-clock-in-out").length) {
+                        $("#js-clock-in-out").replaceWith(result.clock_widget);
+                    }
+                    if (typeof feather !== "undefined") {
+                        feather.replace();
+                    }
                 } else {
                     if (result.isUpdate) {
                         $(".dataTable:visible").appTable({newData: result.data, dataId: result.id});
                     } else {
                         $(".dataTable:visible").appTable({reload: true});
                     }
+                }
+                if (result.topbar_icon) {
+                    window.applyAttendanceTopbarIcon(result.topbar_icon);
+                } else if (typeof window.refreshAttendanceTopbar === "function") {
+                    window.refreshAttendanceTopbar();
                 }
             }
         });

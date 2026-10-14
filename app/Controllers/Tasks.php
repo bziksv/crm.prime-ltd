@@ -2202,18 +2202,13 @@ class Tasks extends Security_Controller {
             app_redirect("forbidden");
         }
 
-        //only admin/ the user has permission to manage all projects, can see all projects, other team mebers can see only their own projects.
-        $options = array("status" => "open");
-        if (!$this->can_manage_all_projects()) {
-            $options["user_id"] = $this->login_user->id;
-        }
-
-        $projects = $this->Projects_model->get_details($options)->getResult();
-
-        //get projects dropdown
+        //same project list source as list/kanban filters
+        $projects = $this->Tasks_model->get_my_projects_dropdown_list($this->login_user->id)->getResult();
         $projects_dropdown = array(array("id" => "", "text" => "- " . app_lang("project") . " -"));
         foreach ($projects as $project) {
-            $projects_dropdown[] = array("id" => $project->id, "text" => $project->title);
+            if ($project->project_id && $project->project_title) {
+                $projects_dropdown[] = array("id" => $project->project_id, "text" => $project->project_title);
+            }
         }
 
         $view_data['projects_dropdown'] = json_encode($projects_dropdown);
@@ -2221,17 +2216,29 @@ class Tasks extends Security_Controller {
         $project_id = 0;
         $view_data['project_id'] = $project_id;
 
-        //prepare members list
+        //prepare members list (legacy project-gantt dropdowns kept for compatibility)
         $view_data['milestone_dropdown'] = $this->_get_milestones_dropdown_list($project_id);
         $view_data["show_milestone_info"] = $this->can_view_milestones();
 
-        $team_members_dropdown = array(array("id" => "", "text" => "- " . app_lang("assigned_to") . " -"));
+        $team_members_dropdown = array(array("value" => "", "text" => "- " . app_lang("team_member") . " -"));
+        $team_responsible_dropdown = array(array("value" => "", "text" => "- " . app_lang("team_responsible") . " -"));
+        $legacy_members_dropdown = array(array("id" => "", "text" => "- " . app_lang("assigned_to") . " -"));
         $assigned_to_list = $this->Users_model->get_dropdown_list(array("first_name", "last_name"), "id", array("deleted" => 0, "user_type" => "staff"));
         foreach ($assigned_to_list as $key => $value) {
-            $team_members_dropdown[] = array("id" => $key, "text" => $value);
+            $team_members_dropdown[] = array("value" => $key, "text" => $value);
+            $team_responsible_dropdown[] = array("value" => $key, "text" => $value);
+            $legacy_members_dropdown[] = array("id" => $key, "text" => $value);
         }
 
-        $view_data['project_members_dropdown'] = json_encode($team_members_dropdown);
+        $view_data['team_members_dropdown'] = json_encode($team_members_dropdown);
+        $view_data['team_responsible_dropdown'] = json_encode($team_responsible_dropdown);
+        $view_data['project_members_dropdown'] = json_encode($legacy_members_dropdown);
+        $view_data['priorities_dropdown'] = $this->_get_priorities_dropdown_list();
+        $view_data['contexts_dropdown'] = json_encode($this->_get_accessible_contexts_dropdown());
+        $view_data['labels_dropdown'] = json_encode($this->make_labels_dropdown_value("task", "", true));
+        $view_data['private_labels_dropdown'] = json_encode($this->make_labels_dropdown_value("private_task", "", true, app_lang("personal_labels")));
+        $view_data['task_statuses'] = $this->Task_status_model->get_details()->getResult();
+        $view_data["custom_field_filters"] = $this->Custom_fields_model->get_custom_field_filters("tasks", $this->login_user->is_admin, $this->login_user->user_type);
 
         $view_data['show_project_members_dropdown'] = true;
         if ($this->login_user->user_type == "client") {
@@ -2240,6 +2247,7 @@ class Tasks extends Security_Controller {
 
         $view_data['status_dropdown'] = $this->_get_task_statuses_dropdown($project_id);
         $view_data['show_tasks_tab'] = true;
+        $view_data['use_list_filters'] = true;
         $view_data["has_all_projects_restricted_role"] = $this->has_all_projects_restricted_role();
 
         return $this->template->rander("projects/gantt/index", $view_data);
@@ -3814,19 +3822,51 @@ class Tasks extends Security_Controller {
             }
         }
 
-        $options = array(
-            "status_ids" => str_replace('-', ',', $status),
-            "show_assigned_tasks_only_user_id" => $this->show_assigned_tasks_only_user_id(),
-            "milestone_id" => $milestone_id,
-            "assigned_to" => $user_id
-        );
-
-        $auditors_user_id = $this->request->getPost("auditors_user_id");
-        if ($auditors_user_id) {
-            $options["auditors_user_ids"] = array($auditors_user_id);
+        $post_project_id = $this->request->getPost("project_id");
+        if ($post_project_id !== null && $post_project_id !== "") {
+            $project_id = $post_project_id;
+            validate_numeric_value($project_id);
         }
 
-        if (!$status) {
+        $post_milestone_id = $this->request->getPost("milestone_id");
+        if ($post_milestone_id !== null && $post_milestone_id !== "") {
+            $milestone_id = $post_milestone_id;
+            validate_numeric_value($milestone_id);
+        }
+
+        $responsible_user_ids = $this->request->getPost('responsible_user_id') ? implode(",", $this->request->getPost('responsible_user_id')) : "";
+        $member_user_ids = $this->request->getPost('member_user_id');
+        $executors_user_ids = $this->request->getPost('executors_user_id');
+        $auditors_user_ids = $this->request->getPost('auditors_user_id');
+
+        $quick_filter = $this->request->getPost('quick_filter');
+        if ($quick_filter) {
+            $status_ids = "";
+        } else if ($this->request->getPost('status_id')) {
+            $status_ids = implode(",", $this->request->getPost('status_id'));
+        } else {
+            $status_ids = str_replace('-', ',', $status);
+        }
+
+        $options = array(
+            "status_ids" => $status_ids,
+            "show_assigned_tasks_only_user_id" => $this->show_assigned_tasks_only_user_id(),
+            "milestone_id" => $milestone_id,
+            "assigned_to" => $user_id,
+            "responsible_user_ids" => $responsible_user_ids,
+            "member_user_ids" => $member_user_ids,
+            "executors_user_ids" => $executors_user_ids,
+            "auditors_user_ids" => $auditors_user_ids,
+            "responsible_executors_mode" => $this->request->getPost("responsible_executors_mode"),
+            "priority_ids" => $this->request->getPost('priority_id') ? implode(",", $this->request->getPost('priority_id')) : "",
+            "deadline" => $this->request->getPost('deadline'),
+            "context" => $this->request->getPost('context'),
+            "quick_filter" => $quick_filter,
+            "label_ids" => $this->request->getPost('label_id'),
+            "private_label_ids" => $this->request->getPost('private_label_id'),
+        );
+
+        if (!$status_ids && !$quick_filter) {
             $options["exclude_status"] = 3; //don't show completed tasks by default
         }
 
@@ -4447,6 +4487,37 @@ class Tasks extends Security_Controller {
             "published_ids" => $published_ids,
             "data" => $html,
         ));
+    }
+
+    /* download task description + images as Word (.docx) */
+
+    function download_description_word($task_id = 0) {
+        validate_numeric_value($task_id);
+        $task_info = $this->Tasks_model->get_details(array("id" => $task_id))->getRow();
+        if (!$task_info || !$task_info->id) {
+            show_404();
+        }
+        if (!$this->can_view_tasks("", 0, $task_info)) {
+            app_redirect("forbidden");
+        }
+
+        try {
+            @set_time_limit(120);
+            $exporter = new \App\Libraries\Task_word_export();
+            $bytes = $exporter->build($task_info);
+            $filename = $exporter->filename_for($task_info);
+            $ascii_name = "task_" . (int) $task_info->id . ".docx";
+            $disposition = 'attachment; filename="' . $ascii_name . '"; filename*=UTF-8\'\'' . rawurlencode($filename);
+            return $this->response
+                ->setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                ->setHeader("Content-Disposition", $disposition)
+                ->setHeader("Cache-Control", "private, max-age=0, must-revalidate")
+                ->setHeader("Pragma", "public")
+                ->setBody($bytes);
+        } catch (\Throwable $e) {
+            log_message("error", $e->getMessage());
+            echo app_lang("error_occurred");
+        }
     }
 
     /* download task files by zip */

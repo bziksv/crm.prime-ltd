@@ -123,6 +123,18 @@
     overflow: auto;
     font-size: 12px;
 }
+
+.gantt .sticky-grid-header {
+    fill: #ffffff;
+}
+
+.gantt .sticky text.upper-text {
+    fill: #555;
+}
+
+.gantt .sticky text.lower-text {
+    fill: #333;
+}
 .gantt-container .popup-wrapper {
     position: absolute;
     top: 0;

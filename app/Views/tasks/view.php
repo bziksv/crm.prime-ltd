@@ -7,8 +7,8 @@
                     <div class="page-title clearfix">
                         <h1><?php echo app_lang("task_info") . " #$model_info->id"; ?></h1>
 
-                        <?php if ($can_edit_tasks) { ?>
-                            <div class="title-button-group">
+                        <div class="title-button-group">
+                            <?php if ($can_edit_tasks) { ?>
                                 <span class="dropdown inline-block">
                                     <button class="btn btn-default dropdown-toggle caret mr0 mb0" type="button" data-bs-toggle="dropdown" aria-expanded="true">
                                         <i data-feather='settings' class='icon-16'></i> <?php echo app_lang('actions'); ?>
@@ -16,10 +16,15 @@
                                     <ul class="dropdown-menu float-end" role="menu">
                                         <li role="presentation"><?php echo modal_anchor(get_uri("tasks/modal_form"), "<i data-feather='edit-2' class='icon-16'></i> " . app_lang('edit_task'), array("title" => app_lang('edit_task'), "data-post-id" => $model_info->id, "data-post-view_type" => "details", "id" => "task-details-edit-btn", "class" => "dropdown-item")); ?></li>
                                         <li role="presentation"><?php echo modal_anchor(get_uri("tasks/modal_form"), "<i data-feather='copy' class='icon-16'></i> " . app_lang('clone_task'), array("title" => app_lang('clone_task'), "data-post-id" => $model_info->id, "data-post-is_clone" => true, "data-post-view_type" => "details", "class" => "dropdown-item")); ?></li>
+                                        <li role="presentation"><a href="<?php echo get_uri("tasks/download_description_word/" . $model_info->id); ?>" class="dropdown-item"><i data-feather="file-text" class="icon-16"></i> <?php echo app_lang("download_task_word"); ?></a></li>
                                     </ul>
                                 </span>
-                            </div>
-                        <?php } ?>
+                            <?php } else { ?>
+                                <a href="<?php echo get_uri("tasks/download_description_word/" . $model_info->id); ?>" class="btn btn-default">
+                                    <i data-feather="file-text" class="icon-16"></i> <?php echo app_lang("download_task_word"); ?>
+                                </a>
+                            <?php } ?>
+                        </div>
 
                     </div>
 
@@ -72,6 +77,9 @@
         </div>
 
         <div class="task-panel-view-footer">
+            <a href="<?php echo get_uri("tasks/download_description_word/" . $model_info->id); ?>" class="btn btn-default btn-sm" title="<?php echo app_lang("download_task_word"); ?>">
+                <i data-feather="file-text" class="icon-16"></i> <?php echo app_lang("download_task_word"); ?>
+            </a>
             <?php
             if ($can_edit_tasks) {
                 echo modal_anchor(get_uri("tasks/modal_form"), "<i data-feather='copy' class='icon-16'></i> " . app_lang('clone_task'), array("class" => "btn btn-default btn-sm", "data-post-is_clone" => true, "data-post-id" => $model_info->id, "title" => app_lang('clone_task')));
@@ -121,6 +129,9 @@
     </div>
 
     <div class="modal-footer">
+        <a href="<?php echo get_uri("tasks/download_description_word/" . $model_info->id); ?>" class="btn btn-default float-start" title="<?php echo app_lang("download_task_word"); ?>">
+            <i data-feather="file-text" class="icon-16"></i> <?php echo app_lang("download_task_word"); ?>
+        </a>
         <?php
         if ($can_edit_tasks) {
             echo modal_anchor(get_uri("tasks/modal_form"), "<i data-feather='copy' class='icon-16'></i> " . app_lang('clone_task'), array("class" => "btn btn-default float-start", "data-post-is_clone" => true, "data-post-id" => $model_info->id, "title" => app_lang('clone_task')));

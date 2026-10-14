@@ -1,4 +1,5 @@
 <?php
+$use_list_filters = !empty($use_list_filters);
 if (!$project_id) {
     load_css(array(
         "assets/js/gantt-chart/frappe-gantt.css"
@@ -10,17 +11,22 @@ if (!$project_id) {
 }
 ?>
 
+<?php if (isset($show_tasks_tab) && $show_tasks_tab == true) { ?>
+    <ul class="nav nav-tabs bg-white title" role="tablist">
+        <li class="title-tab"><h4 class="pl15 pt10 pr15"><?php echo app_lang("tasks"); ?></h4></li>
+        <?php echo view("tasks/tabs", array("active_tab" => "gantt", "selected_tab" => "")); ?>
+    </ul>
+<?php } ?>
+
+<?php if ($use_list_filters) { ?>
+    <div class="bg-white" id="js-gantt-filter-container">
+        <div id="gantt-filters"></div>
+    </div>
+<?php } ?>
+
 <div class="card">
 
     <div class="tab-title clearfix gantt-view">
-
-        <?php if (isset($show_tasks_tab) && $show_tasks_tab == true) { ?>
-            <ul class="nav nav-tabs bg-white title" role="tablist">
-                <li class="title-tab"><h4 class="pl15 pt10 pr15"><?php echo app_lang("tasks"); ?></h4></li>
-                <?php echo view("tasks/tabs", array("active_tab" => "gantt", "selected_tab" => "")); ?>       
-            </ul>
-        <?php } ?>
-
         <h4><?php echo app_lang('gantt'); ?></h4>
         <div class="float-end p10 mr10 custom-toolbar">
             <?php
@@ -38,42 +44,44 @@ if (!$project_id) {
                 echo form_dropdown("gantt-group-by", $gantt_group_by, array(), "class='select2 w150 mr10 reload-gantt' id='gantt-group-by'");
             }
             ?>
-            <?php
-            if (!$project_id) {
-                echo form_input(array(
-                    "id" => "gantt-projects-dropdown",
-                    "name" => "gantt-projects-dropdown",
-                    "class" => "select2 w200 reload-gantt"
-                ));
-            }
-            ?>
-            <?php
-            if ($show_project_members_dropdown) {
-                echo form_input(array(
-                    "id" => "gantt-members-dropdown",
-                    "name" => "gantt-members-dropdown",
-                    "class" => "select2 w200 reload-gantt"
-                ));
-                echo form_input(array(
-                    "id" => "gantt-auditors-dropdown",
-                    "name" => "gantt-auditors-dropdown",
-                    "class" => "select2 w200 reload-gantt",
-                    "placeholder" => "- " . app_lang("auditors") . " -"
-                ));
-            }
-            ?>
-            <?php
-            if ($show_milestone_info) {
-                echo form_input(array(
-                    "id" => "gantt-milestone-dropdown",
-                    "name" => "gantt-milestone-dropdown",
-                    "class" => "select2 w200 reload-gantt"
-                ));
-            }
-            ?>
+            <?php if (!$use_list_filters) { ?>
+                <?php
+                if (!$project_id) {
+                    echo form_input(array(
+                        "id" => "gantt-projects-dropdown",
+                        "name" => "gantt-projects-dropdown",
+                        "class" => "select2 w200 reload-gantt"
+                    ));
+                }
+                ?>
+                <?php
+                if ($show_project_members_dropdown) {
+                    echo form_input(array(
+                        "id" => "gantt-members-dropdown",
+                        "name" => "gantt-members-dropdown",
+                        "class" => "select2 w200 reload-gantt"
+                    ));
+                    echo form_input(array(
+                        "id" => "gantt-auditors-dropdown",
+                        "name" => "gantt-auditors-dropdown",
+                        "class" => "select2 w200 reload-gantt",
+                        "placeholder" => "- " . app_lang("auditors") . " -"
+                    ));
+                }
+                ?>
+                <?php
+                if ($show_milestone_info) {
+                    echo form_input(array(
+                        "id" => "gantt-milestone-dropdown",
+                        "name" => "gantt-milestone-dropdown",
+                        "class" => "select2 w200 reload-gantt"
+                    ));
+                }
+                ?>
 
-            <input type="hidden" name="gantt-status-dropdown" id="gantt-status-dropdown" class="reload-gantt" />
-            <span class='dropdown-apploader-section ml10 inline-block gantt-status-filter' id="gantt-status-dropdown-container"></span>
+                <input type="hidden" name="gantt-status-dropdown" id="gantt-status-dropdown" class="reload-gantt" />
+                <span class='dropdown-apploader-section ml10 inline-block gantt-status-filter' id="gantt-status-dropdown-container"></span>
+            <?php } ?>
 
             <?php
             $gantt_view_dropdown = array(
@@ -107,26 +115,50 @@ echo modal_anchor(get_uri("tasks/view"), "", array("id" => "show_task_hidden", "
 ?>
 
 <script type="text/javascript">
-    var loadGantt = function (group_by, milestoneId, userId, status, projectId, scrollToLast, auditorId) {
+    var useListFilters = <?php echo $use_list_filters ? "true" : "false"; ?>;
+
+    function openGanttTaskModal(taskId) {
+        if (!taskId) {
+            return;
+        }
+        $("#show_task_hidden").attr("data-post-id", taskId);
+        $("#show_task_hidden").attr("data-title", "<?php echo app_lang('task_info') . " #" ?>" + taskId);
+        $("#show_task_hidden").trigger("click");
+    }
+
+    function isGanttGroupRow(task) {
+        if (!task || task.id === undefined || task.id === null) {
+            return true;
+        }
+        var id = String(task.id);
+        // synthetic milestone/member/project rows: "milestones-12"
+        return !/^\d+$/.test(id);
+    }
+
+    var loadGantt = function (group_by, milestoneId, userId, status, projectId, scrollToLast, auditorId, filterParams) {
         group_by = group_by || "milestones";
         milestoneId = milestoneId || "0";
         userId = userId || "0";
         status = status || "";
         projectId = projectId || "<?php echo $project_id; ?>";
         auditorId = auditorId || "0";
+        filterParams = filterParams || {};
 
         var scrollLeft = $("#gantt-chart .gantt-container").scrollLeft();
 
         $("#gantt-chart").html("<div style='height:100px;'></div>");
         appLoader.show({container: "#gantt-chart", css: "right:50%;"});
 
+        var postData = $.extend({}, filterParams);
+        if (!useListFilters) {
+            postData.auditors_user_id = auditorId;
+        }
+
         $.ajax({
             url: "<?php echo get_uri("tasks/gantt_data/"); ?>" + projectId + "/" + group_by + "/" + milestoneId + "/" + userId + "/" + status,
             type: 'POST',
             dataType: 'json',
-            data: {
-                auditors_user_id: auditorId
-            },
+            data: postData,
             success: function (result) {
                 appLoader.hide();
                 if (!result.length) {
@@ -144,16 +176,15 @@ echo modal_anchor(get_uri("tasks/view"), "", array("id" => "show_task_hidden", "
                     popup_trigger: "mouseover",
                     view_mode: viewMode,
                     on_click: function (task) {
-                        if (task.dependencies.length && !task.group_task) {
-                            $("#show_task_hidden").attr("data-post-id", task.id);
-                            $("#show_task_hidden").attr("data-title", "<?php echo app_lang('task_info') . " #" ?>" + task.id);
-                            $("#show_task_hidden").trigger("click");
-
-                        } else {
-                            collapseScrollLeft = $("#gantt-chart .gantt-container").scrollLeft();
-                            gantt.collapse_group(task.id);
-                            $("#gantt-chart .gantt-container").scrollLeft(collapseScrollLeft);
+                        // Real tasks (including parents with subtasks) open in modal.
+                        // Synthetic group rows still expand/collapse.
+                        if (!isGanttGroupRow(task)) {
+                            openGanttTaskModal(task.id);
+                            return;
                         }
+                        collapseScrollLeft = $("#gantt-chart .gantt-container").scrollLeft();
+                        gantt.collapse_group(task.id);
+                        $("#gantt-chart .gantt-container").scrollLeft(collapseScrollLeft);
                     },
                     on_date_change: function (task, start, end) {
                         appLoader.show();
@@ -209,17 +240,11 @@ echo modal_anchor(get_uri("tasks/view"), "", array("id" => "show_task_hidden", "
                 //change view mode
                 var $ganttView = $("#gantt-view-dropdown");
 
-                $ganttView.on("change", function () {
+                $ganttView.off("change.ganttView").on("change.ganttView", function () {
                     var type = $(this).val();
-                    changeGanttView(type);
-
-                    //save cookie
+                    gantt.change_view_mode(type);
                     setCookie("gantt_view_of_user_<?php echo $login_user->id; ?>", type);
                 });
-
-                function changeGanttView(type) {
-                    gantt.change_view_mode(type);
-                }
 
                 if (scrollToLast && scrollLeft) {
                     setTimeout(function () {
@@ -229,17 +254,20 @@ echo modal_anchor(get_uri("tasks/view"), "", array("id" => "show_task_hidden", "
 
                 //dragable board
                 setTimeout(function () {
-                    var slider = document.querySelector('.gantt-container');
+                    var slider = document.querySelector('#gantt-chart .gantt-container');
+                    if (!slider) {
+                        return;
+                    }
                     var isDown = false;
                     var startX;
-                    var scrollLeft;
+                    var scrollLeftPos;
 
                     slider.addEventListener('mousedown', (e) => {
                         if ($(e.target).hasClass("grid-row")) {
                             isDown = true;
                             slider.classList.add('active');
                             startX = e.pageX - slider.offsetLeft;
-                            scrollLeft = slider.scrollLeft;
+                            scrollLeftPos = slider.scrollLeft;
                         }
 
                     });
@@ -257,7 +285,7 @@ echo modal_anchor(get_uri("tasks/view"), "", array("id" => "show_task_hidden", "
                         e.preventDefault();
                         var x = e.pageX - slider.offsetLeft;
                         var walk = (x - startX) * 3; //scroll-fast
-                        slider.scrollLeft = scrollLeft - walk;
+                        slider.scrollLeft = scrollLeftPos - walk;
                     });
                 });
 
@@ -274,53 +302,71 @@ echo modal_anchor(get_uri("tasks/view"), "", array("id" => "show_task_hidden", "
             $ganttView = $("#gantt-view-dropdown");
 
     window.reloadGantt = function (scrollToLast) {
-        var group_by = $ganttGroupBy.val() || "milestones" || "projects",
-                milestoneId = $ganttMilestone.val(),
-                userId = $("#gantt-members-dropdown").val(),
-                auditorId = $("#gantt-auditors-dropdown").val(),
-                status = $ganttStatus.val();
+        var group_by = $ganttGroupBy.val() || "milestones" || "projects";
+        var filterParams = {};
+        var milestoneId = "0";
+        var userId = "0";
+        var auditorId = "0";
+        var status = "";
+        var projectId = "<?php echo $project_id; ?>";
 
-        var projectId = $ganttProjects.val() || "<?php echo $project_id; ?>";
+        if (useListFilters && window.InstanceCollection && window.InstanceCollection["gantt-filters"]) {
+            filterParams = $.extend({}, window.InstanceCollection["gantt-filters"].filterParams || {});
+            projectId = filterParams.project_id || "0";
+            milestoneId = filterParams.milestone_id || "0";
+            if ($.isArray(filterParams.status_id)) {
+                status = filterParams.status_id.join("-");
+            } else if (filterParams.status_id) {
+                status = filterParams.status_id;
+            }
+        } else {
+            milestoneId = $ganttMilestone.val();
+            userId = $("#gantt-members-dropdown").val();
+            auditorId = $("#gantt-auditors-dropdown").val();
+            status = $ganttStatus.val();
+            projectId = $ganttProjects.val() || "<?php echo $project_id; ?>";
+        }
 
-        loadGantt(group_by, milestoneId, userId, status, projectId, scrollToLast, auditorId);
+        loadGantt(group_by, milestoneId, userId, status, projectId, scrollToLast, auditorId, filterParams);
     }
 
     $(document).ready(function () {
         $ganttGroupBy.select2();
 
-        $ganttMilestone.select2({
-            data: <?php echo $milestone_dropdown; ?>
-        });
-
         $ganttView.select2({
             data: <?php echo json_encode($gantt_view_dropdown); ?>
         });
 
-        if ($ganttMembers.length) {
-            $ganttMembers.select2({
-                data: <?php echo $project_members_dropdown; ?>
+        if (!useListFilters) {
+            $ganttMilestone.select2({
+                data: <?php echo $milestone_dropdown; ?>
             });
-        }
 
-        if ($ganttAuditors.length) {
-            var auditorsData = <?php echo $project_members_dropdown; ?>;
-            if (auditorsData.length && auditorsData[0].text && auditorsData[0].text.indexOf("-") === 0) {
-                auditorsData = auditorsData.slice();
-                auditorsData[0] = {id: "", text: "- <?php echo app_lang('auditors'); ?> -"};
+            if ($ganttMembers.length) {
+                $ganttMembers.select2({
+                    data: <?php echo $project_members_dropdown; ?>
+                });
             }
-            $ganttAuditors.select2({
-                data: auditorsData
+
+            if ($ganttAuditors.length) {
+                var auditorsData = <?php echo $project_members_dropdown; ?>;
+                if (auditorsData.length && auditorsData[0].text && auditorsData[0].text.indexOf("-") === 0) {
+                    auditorsData = auditorsData.slice();
+                    auditorsData[0] = {id: "", text: "- <?php echo app_lang('auditors'); ?> -"};
+                }
+                $ganttAuditors.select2({
+                    data: auditorsData
+                });
+            }
+
+            $("#gantt-status-dropdown-container").appMultiSelect({
+                text: "<?php echo app_lang('status'); ?>",
+                options: <?php echo $status_dropdown; ?>,
+                onChange: function (values) {
+                    $ganttStatus.val(values.join('-'));
+                    reloadGantt();
+                }
             });
-        }
-
-        $("#gantt-status-dropdown-container").appMultiSelect({
-            text: "<?php echo app_lang('status'); ?>",
-            options: <?php echo $status_dropdown; ?>,
-            onChange: function (values) {
-                $ganttStatus.val(values.join('-'));
-                reloadGantt();
-            }
-        });
 
 <?php if (!$project_id) { ?>
             $ganttProjects.select2({
@@ -328,36 +374,40 @@ echo modal_anchor(get_uri("tasks/view"), "", array("id" => "show_task_hidden", "
             });
 <?php } ?>
 
-        //refresh milestones on changing of project
-        $ganttProjects.on("change", function () {
-            var projectId = $(this).val();
-            if (projectId) {
-                $ganttMilestone.select2("destroy");
-                $ganttMilestone.hide();
-                appLoader.show();
-                $.ajax({
-                    url: "<?php echo get_uri('tasks/get_milestones_for_filter') ?>",
-                    dataType: "json",
-                    type: 'POST',
-                    data: {project_id: projectId},
-                    success: function (result) {
-                        $ganttMilestone.show().val("");
-                        $ganttMilestone.select2({data: result});
-                        appLoader.hide();
-                    }
-                });
-            }
-        });
+            //refresh milestones on changing of project
+            $ganttProjects.on("change", function () {
+                var projectId = $(this).val();
+                if (projectId) {
+                    $ganttMilestone.select2("destroy");
+                    $ganttMilestone.hide();
+                    appLoader.show();
+                    $.ajax({
+                        url: "<?php echo get_uri('tasks/get_milestones_for_filter') ?>",
+                        dataType: "json",
+                        type: 'POST',
+                        data: {project_id: projectId},
+                        success: function (result) {
+                            $ganttMilestone.show().val("");
+                            $ganttMilestone.select2({data: result});
+                            appLoader.hide();
+                        }
+                    });
+                }
+            });
+
+            loadGantt();
+        }
 
         //this should be under the milestone changing codes according to projects
         $(".reload-gantt").change(function () {
             reloadGantt();
         });
-
-        loadGantt();
-
-
-
-
     });
 </script>
+
+<?php
+if ($use_list_filters) {
+    echo view("tasks/responsible_executors_mode_toggle_js");
+    echo view("tasks/gantt_filters_helper_js");
+}
+?>

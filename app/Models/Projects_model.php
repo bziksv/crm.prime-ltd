@@ -186,6 +186,20 @@ class Projects_model extends Crud_model {
             $where .= " AND $tasks_table.assigned_to=$assigned_to";
         }
 
+        // list-style filters (responsible / executors / collaborators)
+        $where = $this->_apply_responsible_executors_filter($where, $options, $tasks_table);
+
+        $member_user_ids = $this->_get_clean_value($options, "member_user_ids");
+        if ($member_user_ids) {
+            if (!is_array($member_user_ids)) {
+                $member_user_ids = array($member_user_ids);
+            }
+            foreach ($member_user_ids as $member_user_id) {
+                $member_user_id = $this->db->escapeString($member_user_id);
+                $where .= " AND (FIND_IN_SET('$member_user_id', $tasks_table.collaborators))";
+            }
+        }
+
         $auditors_user_ids = $this->_get_clean_value($options, "auditors_user_ids");
         if ($auditors_user_ids) {
             if (!is_array($auditors_user_ids)) {
@@ -194,6 +208,58 @@ class Projects_model extends Crud_model {
             foreach ($auditors_user_ids as $auditors_user_id) {
                 $auditors_user_id = $this->db->escapeString($auditors_user_id);
                 $where .= " AND (FIND_IN_SET('$auditors_user_id', IFNULL($tasks_table.auditors, '')))";
+            }
+        }
+
+        $priority_ids = $this->_get_clean_value($options, "priority_ids");
+        if ($priority_ids) {
+            $where .= " AND FIND_IN_SET($tasks_table.priority_id,'$priority_ids')";
+        }
+
+        $label_ids = $this->_get_clean_value($options, "label_ids");
+        if ($label_ids) {
+            if (!is_array($label_ids)) {
+                $label_ids = array($label_ids);
+            }
+            foreach ($label_ids as $label_id) {
+                $label_id = $this->db->escapeString($label_id);
+                $where .= " AND (FIND_IN_SET('$label_id', $tasks_table.labels)) ";
+            }
+        }
+
+        $private_label_ids = $this->_get_clean_value($options, "private_label_ids");
+        if ($private_label_ids) {
+            if (!is_array($private_label_ids)) {
+                $private_label_ids = array($private_label_ids);
+            }
+            foreach ($private_label_ids as $private_label_id) {
+                $private_label_id = $this->db->escapeString($private_label_id);
+                $where .= " AND (FIND_IN_SET('$private_label_id', $tasks_table.private_labels)) ";
+            }
+        }
+
+        $context = $this->_get_clean_value($options, "context");
+        if ($context) {
+            $where .= " AND $tasks_table.context='$context'";
+        }
+
+        $deadline = $this->_get_clean_value($options, "deadline");
+        if ($deadline) {
+            $now = get_my_local_time("Y-m-d");
+            if ($deadline === "expired") {
+                $where .= " AND IF($tasks_table.deadline IS NULL, $milestones_table.due_date<'$now', $tasks_table.deadline<'$now')";
+            } else if ($deadline == $now) {
+                $where .= " AND IF($tasks_table.deadline IS NULL, $milestones_table.due_date='$deadline', $tasks_table.deadline='$deadline')";
+            } else {
+                $where .= " AND IF($tasks_table.deadline IS NULL, $milestones_table.due_date BETWEEN '$now' AND '$deadline', $tasks_table.deadline BETWEEN '$now' AND '$deadline')";
+            }
+        }
+
+        $quick_filter = $this->_get_clean_value($options, "quick_filter");
+        if ($quick_filter) {
+            $tasks_model = model("App\Models\Tasks_model", false);
+            if (method_exists($tasks_model, "get_quick_filter_where")) {
+                $where .= $tasks_model->get_quick_filter_where($quick_filter);
             }
         }
 
@@ -238,6 +304,45 @@ class Projects_model extends Crud_model {
         WHERE $tasks_table.deleted=0 $where $extra_where
         ORDER BY $tasks_table.parent_task_id ASC, $tasks_table.start_date ASC";
         return $this->db->query($sql)->getResult();
+    }
+
+    private function _apply_responsible_executors_filter($where, $options, $tasks_table) {
+        $responsible_user_ids = $this->_get_clean_value($options, "responsible_user_ids");
+        $executors_user_ids = $this->_get_clean_value($options, "executors_user_ids");
+        $mode = $this->_get_clean_value($options, "responsible_executors_mode");
+        if ($mode !== "or") {
+            $mode = "and";
+        }
+
+        $responsible_sql = "";
+        if ($responsible_user_ids) {
+            $responsible_sql = "FIND_IN_SET($tasks_table.assigned_to,'$responsible_user_ids')";
+        }
+
+        $executors_parts = array();
+        if ($executors_user_ids) {
+            if (!is_array($executors_user_ids)) {
+                $executors_user_ids = array($executors_user_ids);
+            }
+            foreach ($executors_user_ids as $executors_user_id) {
+                $executors_user_id = $this->db->escapeString($executors_user_id);
+                $executors_parts[] = "FIND_IN_SET('$executors_user_id', $tasks_table.executors)";
+            }
+        }
+        $executors_sql = $executors_parts ? "(" . implode(" AND ", $executors_parts) . ")" : "";
+
+        if ($mode === "or" && $responsible_sql && $executors_sql) {
+            $where .= " AND ($responsible_sql OR $executors_sql)";
+        } else {
+            if ($responsible_sql) {
+                $where .= " AND $responsible_sql";
+            }
+            if ($executors_sql) {
+                $where .= " AND $executors_sql";
+            }
+        }
+
+        return $where;
     }
 
     function add_remove_star($project_id, $user_id, $type = "add") {

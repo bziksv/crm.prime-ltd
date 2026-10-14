@@ -189,11 +189,20 @@ class Attendance extends Security_Controller {
 
         if ($user_id) {
             echo json_encode(array("success" => true, "data" => $this->_clock_in_out_row_data($user_id), 'id' => $user_id, 'message' => app_lang('record_saved'), "isUpdate" => true));
-        } else if ($this->request->getPost("clock_out")) {
-            echo json_encode(array("success" => true, "clock_widget" => clock_widget()));
+        } else if ($this->request->getPost("clock_out") || $this->request->getPost("from_topbar")) {
+            echo json_encode(array(
+                "success" => true,
+                "clock_widget" => clock_widget(),
+                "topbar_icon" => attendance_topbar_icon(),
+                "message" => app_lang('record_saved'),
+            ));
         } else {
             return clock_widget();
         }
+    }
+
+    function topbar_clock_icon() {
+        echo attendance_topbar_icon();
     }
 
     //delete/undo attendance record

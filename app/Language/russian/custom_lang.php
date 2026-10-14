@@ -110,4 +110,6 @@ $lang["scheduled_comment_tomorrow_08"] = "Завтра 08:00";
 $lang["scheduled_comment_tomorrow_09"] = "Завтра 09:00";
 $lang["scheduled_comment_first_workday"] = "Первый раб. день 09:00";
 
+$lang["download_task_word"] = "Скачать в Word";
+
 return $lang;
