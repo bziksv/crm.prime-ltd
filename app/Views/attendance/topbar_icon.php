@@ -13,8 +13,9 @@ $mm = str_pad((string) floor(($elapsed % 3600) / 60), 2, "0", STR_PAD_LEFT);
 $ss = str_pad((string) ($elapsed % 60), 2, "0", STR_PAD_LEFT);
 $time_label = $hh . ":" . $mm . ":" . $ss;
 
-$play_icon = '<svg class="attendance-topbar-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 7.2v9.6L18 12 10 7.2z"></path></svg>';
-$stop_icon = '<svg class="attendance-topbar-glyph" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="8" height="8" rx="1"></rect></svg>';
+/* Play triangle optically centered in 24×24 (centroid ≈ 12,12). */
+$play_icon = '<svg class="attendance-topbar-glyph attendance-topbar-glyph-play" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false"><path d="M9.5 6.8v10.4L18.2 12 9.5 6.8z"></path></svg>';
+$stop_icon = '<svg class="attendance-topbar-glyph" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false"><rect x="8" y="8" width="8" height="8" rx="1.2"></rect></svg>';
 ?>
 <li class="nav-item" id="js-attendance-topbar-item">
     <div class="attendance-topbar-control <?php echo $clocked_in ? "is-running" : "is-stopped"; ?>"

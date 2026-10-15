@@ -3734,54 +3734,66 @@ a.pm-file-row-main:hover .pm-file-name {
 }
 
 .attendance-topbar-btn {
+    position: relative !important;
     display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 26px;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+    min-height: 26px !important;
     padding: 0 !important;
-    margin: 0;
-    border: 0;
-    border-radius: 50%;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 50% !important;
     background: transparent;
     line-height: 0 !important;
+    font-size: 0 !important;
     text-decoration: none !important;
+    vertical-align: middle;
+    overflow: hidden;
     transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
 .attendance-topbar-btn .attendance-topbar-glyph {
-    display: block;
-    width: 12px;
-    height: 12px;
-    margin: 0;
-    flex-shrink: 0;
-    fill: currentColor;
-    stroke: none;
+    display: block !important;
+    width: 12px !important;
+    height: 12px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex: 0 0 12px;
+    fill: currentColor !important;
+    stroke: none !important;
+    transform: none !important;
+    position: relative;
+    top: auto;
+    left: auto;
 }
 
-/* play triangle looks high/left optically — nudge to visual center */
-.attendance-topbar-start .attendance-topbar-glyph {
-    transform: translate(1px, 1px);
+/* Play triangle is heavier on the left — tiny optical nudge right only */
+.attendance-topbar-btn .attendance-topbar-glyph-play {
+    transform: translateX(0.5px) !important;
 }
 
 .attendance-topbar-start {
     color: #fff !important;
-    background: #12b76a;
+    background: #12b76a !important;
 }
 
 .attendance-topbar-start:hover {
-    background: #039855;
+    background: #039855 !important;
     color: #fff !important;
     transform: scale(1.05);
 }
 
 .attendance-topbar-stop {
     color: #fff !important;
-    background: #f04438;
+    background: #f04438 !important;
 }
 
 .attendance-topbar-stop:hover {
-    background: #d92d20;
+    background: #d92d20 !important;
     color: #fff !important;
     transform: scale(1.05);
 }
