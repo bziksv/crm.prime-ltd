@@ -217,8 +217,8 @@
                     id="telegram_chat_id" 
                     name="telegram_chat_id" 
                     value="<?= esc($telegram_chat_id); ?>" 
-                    placeholder="Введите ваш chat_id">
-                    <a href="https://t.me/Getmyid_bot" target="_blank">Не знаете свой ID, напишите боту</a>
+                    placeholder="Chat id диалога с ботом">
+                    <div class="mt5 text-off">Откройте <a href="https://t.me/PrimeLtdSu_Bot" target="_blank">@PrimeLtdSu_Bot</a> и нажмите Start. Уведомления приходят в этот диалог. В поле укажите chat id этого чата.</div>
             </div>
             
             <div class="form-group">

@@ -171,6 +171,7 @@ class Team_members extends Security_Controller {
             "phone" => $this->request->getPost('phone'),
             "gender" => $this->request->getPost('gender'),
             "user_type" => "staff",
+            "enable_email_notification" => 0,
             "created_at" => get_current_utc_time()
         );
 
@@ -1311,7 +1312,10 @@ class Team_members extends Security_Controller {
     }
 
     private function _prepare_team_member_data($row_data) {
-        $team_member_data = array("user_type" => "staff");
+        $team_member_data = array(
+            "user_type" => "staff",
+            "enable_email_notification" => 0
+        );
         $custom_field_values_array = array();
 
         foreach ($row_data as $column_index => $value) {

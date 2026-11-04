@@ -161,6 +161,7 @@ class Signup extends App_Controller
 
                 if ($type === "staff") {
                     //create a team member account
+                    $user_data["enable_email_notification"] = 0;
                     $user_id = $this->Users_model->ci_save($user_data);
                     if ($user_id) {
                         //save team members job info

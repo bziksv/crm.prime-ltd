@@ -675,8 +675,8 @@ if (!function_exists('send_telegram_notification')) {
                     $user_notification_setting = $UserNotificationSettingsModel->get_by_user($user->id);
 
                     if(
-                        isset($comment_user_id) && 
-                        // $comment_user_id == $user->id && 
+                        isset($comment_user_id) &&
+                        $comment_user_id == $user->id &&
                         $user_notification_setting->notify_task_my_comment_added == 0
                     ) {
                         continue;
