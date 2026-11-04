@@ -326,6 +326,35 @@ class Webhooks_listener extends App_Controller {
         $this->Subscriptions_model->ci_save($subscription_data, $subscription_info->id);
     }
 
+    function telegram() {
+        if (!function_exists('telegram_send')) {
+            require_once PLUGINPATH . 'Telegram_Notification/Helpers/telegram_notification_general_helper.php';
+        }
+
+        $secret = (string) get_telegram_notification_setting('webhook_secret');
+        $header = (string) $this->request->getHeaderLine('X-Telegram-Bot-Api-Secret-Token');
+        if ($secret === '' || !hash_equals($secret, $header)) {
+            return $this->response->setStatusCode(403)->setBody('forbidden');
+        }
+
+        $update = $this->request->getJSON(true);
+        $message = is_array($update) ? ($update['message'] ?? null) : null;
+        $text = trim((string) ($message['text'] ?? ''));
+        $chatId = $message['chat']['id'] ?? null;
+        $command = strtolower((string) strtok($text, " \n"));
+        $command = preg_replace('/@.*$/', '', $command);
+
+        if ($chatId && $command === '/start') {
+            telegram_send(
+                get_telegram_notification_setting('bot_token'),
+                $chatId,
+                "Ваш chat id: <code>{$chatId}</code>\nВставьте его в профиль CRM, поле «Телеграм chat id», и сохраните."
+            );
+        }
+
+        return $this->response->setStatusCode(200)->setBody('ok');
+    }
+
     function mark_ticket_comment_as_read(int $ticket_comment_id, int $to_user_id) {
         $where = ["ticket_comment_id" => $ticket_comment_id, "to_user_id" => $to_user_id];
 
