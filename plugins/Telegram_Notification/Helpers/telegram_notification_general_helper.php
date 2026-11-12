@@ -322,7 +322,7 @@ function telegram_send($bot_token, $chat_id, $text)
     $result = \App\Libraries\Outbound_http::postJson(
         "https://api.telegram.org/bot{$bot_token}/sendMessage",
         $data,
-        30
+        8
     );
 
     return $result['ok'];
@@ -543,21 +543,21 @@ if (!function_exists('send_telegram_notification')) {
                 foreach($notifyTo as $uid) {
                     $user = $ci->Users_model->get_one($uid);
 
-                    if (!empty($user->telegram_chat_id)) {
+                    if (!empty($user->prime_webhook_url)) {
                         try {
-                            if (!telegram_send(get_telegram_notification_setting("bot_token"), $user->telegram_chat_id, $message)) {
-                                write_log("Telegram ticket send failed for user {$user->id} ({$user->email}) event {$notification_info->event}");
+                            $response = sendPrimeNotification($user->prime_webhook_url, $message);
+                            if (!is_string($response) || strpos($response, '"success":true') === false) {
+                                write_log("Synology ticket send failed for user {$user->id}: {$response}");
                             }
                         } catch (\Exception $ex) {
                             write_log($ex->getMessage());
                         }
                     }
 
-                    if (!empty($user->prime_webhook_url)) {
+                    if (!empty($user->telegram_chat_id)) {
                         try {
-                            $response = sendPrimeNotification($user->prime_webhook_url, $message);
-                            if (!is_string($response) || strpos($response, '"success":true') === false) {
-                                write_log("Synology ticket send failed for user {$user->id}: {$response}");
+                            if (!telegram_send(get_telegram_notification_setting("bot_token"), $user->telegram_chat_id, $message)) {
+                                write_log("Telegram ticket send failed for user {$user->id} ({$user->email}) event {$notification_info->event}");
                             }
                         } catch (\Exception $ex) {
                             write_log($ex->getMessage());
@@ -704,14 +704,6 @@ if (!function_exists('send_telegram_notification')) {
                         ->getRow();
 
                     if ($setting) {
-        
-                        if (
-                            isset($user->telegram_chat_id)
-                            && is_project_notification_channel_enabled($user->id, $task->project_id, 'Telegram')
-                        ) {
-                            telegram_send(get_telegram_notification_setting("bot_token"), $user->telegram_chat_id, $notificationText);
-                        }
-
                         if (
                             !empty($user->prime_webhook_url)
                             && is_project_notification_channel_enabled($user->id, $task->project_id, 'Synology')
@@ -724,6 +716,13 @@ if (!function_exists('send_telegram_notification')) {
                             } catch (\Exception $ex) {
                                 write_log($ex->getMessage());
                             }
+                        }
+
+                        if (
+                            !empty($user->telegram_chat_id)
+                            && is_project_notification_channel_enabled($user->id, $task->project_id, 'Telegram')
+                        ) {
+                            telegram_send(get_telegram_notification_setting("bot_token"), $user->telegram_chat_id, $notificationText);
                         }
                     }
 
