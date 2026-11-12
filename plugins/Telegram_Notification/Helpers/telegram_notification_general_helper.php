@@ -553,9 +553,12 @@ if (!function_exists('send_telegram_notification')) {
                         }
                     }
 
-                    if(isset($user->prime_webhook_url)) {
+                    if (!empty($user->prime_webhook_url)) {
                         try {
                             $response = sendPrimeNotification($user->prime_webhook_url, $message);
+                            if (!is_string($response) || strpos($response, '"success":true') === false) {
+                                write_log("Synology ticket send failed for user {$user->id}: {$response}");
+                            }
                         } catch (\Exception $ex) {
                             write_log($ex->getMessage());
                         }
@@ -710,11 +713,14 @@ if (!function_exists('send_telegram_notification')) {
                         }
 
                         if (
-                            isset($user->prime_webhook_url)
+                            !empty($user->prime_webhook_url)
                             && is_project_notification_channel_enabled($user->id, $task->project_id, 'Synology')
                         ) {
                             try {
                                 $response = sendPrimeNotification($user->prime_webhook_url, $notificationText);
+                                if (!is_string($response) || strpos($response, '"success":true') === false) {
+                                    write_log("Synology task send failed for user {$user->id}: {$response}");
+                                }
                             } catch (\Exception $ex) {
                                 write_log($ex->getMessage());
                             }
@@ -733,26 +739,37 @@ if (!function_exists('send_telegram_notification')) {
     }
 
     function sendPrimeNotification($url, $message) {
+        $url = trim((string) $url);
+        if ($url === '') {
+            return 'empty webhook';
+        }
+
         $message = formatMessage($message);
         $payload = json_encode([
             'text' => $message,
         ], JSON_UNESCAPED_UNICODE);
 
-        $postFields = "payload=" . $payload;
-
-        $result = \App\Libraries\Outbound_http::request($url, [
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $postFields,
+            CURLOPT_POSTFIELDS => http_build_query(['payload' => $payload]),
             CURLOPT_HTTPHEADER => [
-                'Content-Type: application/x-www-form-urlencoded'
+                'Content-Type: application/x-www-form-urlencoded',
             ],
-        ], 30);
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_CONNECTTIMEOUT => 8,
+        ]);
+        $body = curl_exec($ch);
+        $err = curl_error($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
 
-        if (!$result['ok']) {
-            return "cURL error: " . ($result['curl_error'] ?: ('HTTP ' . $result['http_code']));
+        if ($body === false || $err !== '' || $code < 200 || $code >= 300) {
+            return 'cURL error: ' . ($err !== '' ? $err : ('HTTP ' . $code));
         }
 
-        return $result['body'];
+        return (string) $body;
     }
 
     function formatMessage($text) {
