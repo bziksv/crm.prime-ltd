@@ -1,7 +1,8 @@
 <?php
 
 if ($notification->task_id && $notification->task_title) {
-    echo "\n<b>" . app_lang("task") . ":</b> #$notification->task_id - " . $notification->task_title;
+    $taskUrl = get_uri("tasks/view/" . $notification->task_id);
+    echo "\n<b>" . app_lang("task") . ":</b> <a href=\"" . $taskUrl . "\">#" . $notification->task_id . "</a> - " . $notification->task_title;
 }
 
 if ($notification->payment_invoice_id) {
@@ -9,7 +10,8 @@ if ($notification->payment_invoice_id) {
 }
 
 if ($notification->ticket_id && $notification->ticket_title) {
-    echo "\n" . get_ticket_id($notification->ticket_id) . " - " . $notification->ticket_title;
+    $ticketUrl = get_uri("tickets/view/" . $notification->ticket_id);
+    echo "\n<a href=\"" . $ticketUrl . "\">" . get_ticket_id($notification->ticket_id) . "</a> - " . $notification->ticket_title;
 }
 
 if ($notification->leave_id && $notification->leave_start_date) {

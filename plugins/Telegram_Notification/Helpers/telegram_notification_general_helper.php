@@ -561,12 +561,15 @@ if (!function_exists('send_telegram_notification')) {
                 $mainUser = make_profile_link($ci, $ci->Users_model->get_one($ticket->assigned_to));
 
                 $ticketUrl = base_url("index.php/tickets/view/" . $notification_info->ticket_id);
+                $ticketId = (int) $notification_info->ticket_id;
+                $ticketTitle = htmlspecialchars((string) $ticket->title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $projectTitle = htmlspecialchars((string) $project->title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
                 $telegram_message = [
-                    "<a href='" . $ticketUrl . "'>$event</a>",
+                    $event,
                     '',
-                    '<b>Заявка #</b>' . $notification_info->ticket_id . ' ' . $ticket->title,
-                    '<b>Проект:</b> ' . $project->title,
+                    '<b>Заявка</b> <a href="' . $ticketUrl . '">#' . $ticketId . '</a> ' . $ticketTitle,
+                    '<b>Проект:</b> ' . $projectTitle,
                     '<b>Ответственный:</b> ' . $mainUser,
                     '',
                     '<b>Команда:</b>',
