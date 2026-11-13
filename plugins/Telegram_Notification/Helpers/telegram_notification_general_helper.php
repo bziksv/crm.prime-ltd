@@ -315,7 +315,8 @@ function formatTelegramText($text)
 }
 
 /**
- * htmlspecialchars plain text while keeping allowed Telegram HTML tags.
+ * Escape <>& for Telegram HTML, keep quotes as real " / '.
+ * (ENT_QUOTES → &quot; which Synology shows literally.)
  */
 function escape_telegram_html_text($text)
 {
@@ -330,7 +331,12 @@ function escape_telegram_html_text($text)
         $text
     );
 
-    $text = htmlspecialchars($text, ENT_QUOTES | ENT_HTML5, 'UTF-8', false);
+    // Only & < > — quotes must stay as characters for Synology/Telegram readability.
+    $text = str_replace(
+        ['&', '<', '>'],
+        ['&amp;', '&lt;', '&gt;'],
+        $text
+    );
 
     return strtr($text, $placeholders);
 }
@@ -855,6 +861,10 @@ if (!function_exists('send_telegram_notification')) {
             },
             $text
         );
+
+        // Synology does not decode HTML entities — show real quotes/amps.
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = str_replace("\xC2\xA0", ' ', $text);
 
         $text = str_replace('*:', '* :', $text);
 
