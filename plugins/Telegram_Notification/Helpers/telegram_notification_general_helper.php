@@ -275,16 +275,84 @@ function build_telegram_message($message, $url, $roles, $description, $changes)
     return formatTelegramText($text);
 }
 
+/**
+ * Clean HTML-ish CRM/email text for Telegram HTML parse_mode.
+ */
 function formatTelegramText($text)
 {
+    $text = (string) $text;
+
+    // Drop quoted mail and tracking pixels — they blow up spacing.
+    $text = preg_replace('/<blockquote\b[^>]*>.*?<\/blockquote>/is', '', $text);
+    $text = preg_replace('/<img\b[^>]*>/i', '', $text);
+    $text = preg_replace('/<\s*hr[^>]*>/i', "\n", $text);
+
+    $text = preg_replace('/<\s*li[^>]*>/i', '• ', $text);
+    $text = preg_replace('/<\s*\/li\s*>/i', "\n", $text);
+    $text = preg_replace('/<\s*\/?(ul|ol)[^>]*>/i', "\n", $text);
+
     $text = preg_replace('/<\s*br[^>]*>/i', "\n", $text);
-    $text = preg_replace('/<\s*\/p\s*>/i', "\n\n", $text);
-    $text = preg_replace('/<\s*p[^>]*>/i', "", $text);
-    $text = preg_replace('/<\s*\/?span[^>]*>/i', "", $text);
+    $text = preg_replace('/<\s*\/p\s*>/i', "\n", $text);
+    $text = preg_replace('/<\s*p[^>]*>/i', '', $text);
+    $text = preg_replace('/<\s*\/div\s*>/i', "\n", $text);
+    $text = preg_replace('/<\s*div[^>]*>/i', '', $text);
+    $text = preg_replace('/<\s*\/?span[^>]*>/i', '', $text);
+    $text = preg_replace('/<\s*\/?h[1-6][^>]*>/i', "\n", $text);
+
     $text = strip_tags($text, '<b><strong><i><em><u><a><code><pre>');
-    $text = preg_replace("/\n{3,}/", "\n\n", $text);
+
+    $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = str_replace("\xC2\xA0", ' ', $text);
+
+    // Escape leftover <>& so emails like <support@...> don't break HTML mode.
+    $text = escape_telegram_html_text($text);
+
+    $text = preg_replace("/[ \t]+/", ' ', $text);
+    $text = preg_replace("/[ \t]*\n[ \t]*/", "\n", $text);
+    $text = preg_replace("/\n{2,}/", "\n", $text);
 
     return trim($text);
+}
+
+/**
+ * htmlspecialchars plain text while keeping allowed Telegram HTML tags.
+ */
+function escape_telegram_html_text($text)
+{
+    $placeholders = [];
+    $text = preg_replace_callback(
+        '/<\/?(?:b|strong|i|em|u|code|pre)(?:\s[^>]*)?>|<a\s[^>]*>|<\/a>/i',
+        static function ($m) use (&$placeholders) {
+            $key = "\x00TG" . count($placeholders) . "\x00";
+            $placeholders[$key] = $m[0];
+            return $key;
+        },
+        $text
+    );
+
+    $text = htmlspecialchars($text, ENT_QUOTES | ENT_HTML5, 'UTF-8', false);
+
+    return strtr($text, $placeholders);
+}
+
+/**
+ * Ticket email replies: keep only the new text, drop "От кого/From" quote headers.
+ */
+function clean_ticket_comment_for_telegram($text)
+{
+    $text = (string) $text;
+
+    if (str_contains($text, '--')) {
+        $text = explode('--', $text, 2)[0];
+    }
+
+    $text = preg_replace('/<blockquote\b[^>]*>.*?<\/blockquote>/is', '', $text);
+
+    if (preg_match('/^(.*?)(?:\r?\n|<br\s*\/?>)\s*(?:От кого|From)\s*:/is', $text, $m)) {
+        $text = $m[1];
+    }
+
+    return formatTelegramText($text);
 }
 
 
@@ -515,15 +583,16 @@ if (!function_exists('send_telegram_notification')) {
                     $commentedUser = $ci->Users_model->get_one($comment->created_by);
 
                     $files = @unserialize($comment->files);
-                    if (count($files) > 0) {
+                    if (is_array($files) && count($files) > 0) {
                         $telegram_message[] = '';
                         $telegram_message[] = '🖼 <b>В комментарии есть вложения</b>';
                     }
 
+                    $rawComment = (string) ($notification_info->ticket_comment_description ?? $comment->description ?? '');
+
                     //обрезаем информацию, если пришёл ответ с Email
-                    if (str_contains($notification_info->ticket_comment_description, '--')) {
+                    if (str_contains($rawComment, '--') || preg_match('/От кого\s*:|From\s*:/i', $rawComment)) {
                         $type = "\n<b>Комментарий от клиента</b>";
-                        $newComment = explode('--', $notification_info->ticket_comment_description)[0];
                         $profile = make_profile_link($ci, $commentedUser, 'client');
                     } else {
                         $type = "\n<b>Комментарий от сотрудника</b>";
@@ -531,11 +600,12 @@ if (!function_exists('send_telegram_notification')) {
                     }
 
                     $whoComented = "$type $profile:";
-                    $newComment = explode('--', $notification_info->ticket_comment_description)[0];
-                    $newComment = formatTelegramText($newComment);
+                    $newComment = clean_ticket_comment_for_telegram($rawComment);
 
                     $telegram_message[] = $whoComented;
-                    $telegram_message[] = $newComment;
+                    if ($newComment !== '') {
+                        $telegram_message[] = $newComment;
+                    }
                 }
 
                 $message = implode("\n", $telegram_message);
